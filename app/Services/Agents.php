@@ -461,7 +461,7 @@ class Agents
             . "【任务】{$task}\n\n"
             . self::roleText($agent) . "\n" . self::SLIDE_SCHEMA . "\n" . (in_array($agent, ['slides', 'diagram', 'reviewer'], true) ? self::diagramGuide() : '') . self::OPS_RULE . "\n"
             . 'message 用一两句话告诉老师你做了什么。输出：{"message":"","mode":"patch","slides":[],"ops":[],"lesson_updates":{},"bank":[{"qtype":"单选","stem":"","options":[],"answer":"","analysis":""}]}';
-        $r = self::call($agent, $prompt, $agent === 'reviewer' ? 0.2 : 0.5, 8000);
+        $r = self::call($agent, $prompt, $agent === 'reviewer' ? 0.2 : 0.5, 12000);
         $used = DeepSeek::$last['provider'] ?? '';
         if (!$r['ok']) {
             return $r;
@@ -530,6 +530,12 @@ class Agents
             }
         }
         $msg = (string)($j['message'] ?? '已完成') . ($extra ? "\n（" . implode('；', $extra) . '）' : '');
+        if (!empty($r['partial'])) {
+            if ($mode === 'replace') {
+                $msg = '先做好了前 ' . count($new) . ' 页课件' . ($extra ? '（' . implode('；', $extra) . '）' : '') . '。';
+            }
+            $msg .= "\n（这次内容较长，超出了单次输出上限，已保留完整生成的部分" . ($mode === 'replace' ? '，共 ' . count($new) . ' 页' : '') . '。可以接着说“继续完成剩余页面”。）';
+        }
         $detail = '';
         if (!$changed && $mode === 'patch' && empty($j['ops'])) {
             $detail = '没有修改课件页面。';

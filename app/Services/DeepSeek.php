@@ -16,7 +16,7 @@ class DeepSeek
     public static function providers()
     {
         return [
-            'deepseek' => ['name' => 'DeepSeek', 'models' => ['deepseek-chat' => 'deepseek-chat（快，推荐）', 'deepseek-reasoner' => 'deepseek-reasoner（推理强，较慢）']],
+            'deepseek' => ['name' => 'DeepSeek', 'models' => ['deepseek-flash' => 'deepseek-flash（V4.1，快，推荐）', 'deepseek-v4-pro' => 'deepseek-v4-pro（效果最好，较慢较贵）']],
             'qwen' => ['name' => '通义千问', 'models' => ['qwen-plus' => 'qwen-plus（均衡，推荐）', 'qwen-max' => 'qwen-max（效果最好，较贵）', 'qwen-turbo' => 'qwen-turbo（最快最便宜）', 'qwen-plus-latest' => 'qwen-plus-latest（最新版）']],
             'minimax' => ['name' => 'MiniMax', 'models' => ['MiniMax-M3' => 'MiniMax-M3（快，推荐）', 'MiniMax-M3.1-Flash' => 'MiniMax-M3.1-Flash（深度思考，较慢）']],
         ];
@@ -64,7 +64,18 @@ class DeepSeek
         if ($p === 'minimax') {
             return setting('minimax_model', 'MiniMax-M3');
         }
-        return $p === 'qwen' ? setting('qwen_model', 'qwen-plus') : setting('deepseek_model', 'deepseek-chat');
+        if ($p === 'qwen') {
+            return setting('qwen_model', 'qwen-plus');
+        }
+        // DeepSeek 已改用 V4 系列模型名，旧设置自动对应
+        $m = setting('deepseek_model', 'deepseek-flash');
+        return ['deepseek-chat' => 'deepseek-flash', 'deepseek-reasoner' => 'deepseek-v4-pro', 'deepseek-v4-flash' => 'deepseek-flash'][$m] ?? $m;
+    }
+
+    /** 单次输出上限（tokens）：按各家模型能力设置 */
+    public static function outCap($p)
+    {
+        return ['deepseek' => 32768, 'qwen' => 8192, 'minimax' => 16384][$p] ?? 8192;
     }
 
     public static function baseOf($p)
@@ -135,6 +146,22 @@ class DeepSeek
         $first = null;
         foreach ($chain as $k => $q) {
             $res = self::once($q, $action, $messages, $wantJson, $temperature, $maxTokens);
+            if (!empty($res['truncated'])) {
+                // 输出被截断：先放宽长度上限重试一次；仍然截断就保留已完整生成的部分
+                $cap = self::outCap($q);
+                if ($maxTokens < $cap) {
+                    $res = self::once($q, $action, $messages, $wantJson, $temperature, min($cap, (int)($maxTokens * 2.5)));
+                }
+                if (!empty($res['truncated'])) {
+                    $j = self::repairJson($res['content']);
+                    if ($j !== null) {
+                        $res['ok'] = true;
+                        $res['json'] = $j;
+                        $res['partial'] = true;
+                        $res['error'] = '';
+                    }
+                }
+            }
             if ($res['ok'] || empty($res['retry'])) {
                 if ($res['ok'] && $k > 0) {
                     self::$fallback = implode('；', $errs) . ' → 已自动改用 ' . (self::providers()[$q]['name'] ?? $q);
@@ -176,7 +203,7 @@ class DeepSeek
                 $sys[] = '只输出一个合法的 JSON 对象，不要输出任何解释、前言或 Markdown 代码块。';
             }
             $think = $model === 'MiniMax-M3.1-Flash';
-            $payload = ['model' => $model, 'max_tokens' => $think ? min($maxTokens + 6000, 16000) : min($maxTokens, 8192), 'messages' => $msgs];
+            $payload = ['model' => $model, 'max_tokens' => $think ? min($maxTokens + 6000, self::outCap($p)) : min($maxTokens, self::outCap($p)), 'messages' => $msgs];
             if ($sys) {
                 $payload['system'] = implode("\n\n", $sys);
             }
@@ -185,12 +212,15 @@ class DeepSeek
             }
             $url = self::baseOf($p) . '/messages';
         } else {
-            $payload = ['model' => $model, 'messages' => $messages, 'temperature' => $temperature, 'max_tokens' => min($maxTokens, 8192), 'stream' => false];
-            if ($wantJson && $model !== 'deepseek-reasoner') {
+            $payload = ['model' => $model, 'messages' => $messages, 'temperature' => $temperature, 'max_tokens' => min($maxTokens, self::outCap($p)), 'stream' => false];
+            if ($wantJson) {
                 $payload['response_format'] = ['type' => 'json_object'];
             }
-            if ($model === 'deepseek-reasoner') {
-                unset($payload['temperature']);
+            if ($p === 'deepseek') {
+                // V4 系列默认开启深度思考，思考内容会占用输出长度导致正文被截断；备课任务关闭思考
+                $payload['thinking'] = ['type' => 'disabled'];
+            } elseif ($p === 'qwen') {
+                $payload['enable_thinking'] = false;
             }
             $url = rtrim(self::baseOf($p), '/') . '/chat/completions';
         }
@@ -244,7 +274,8 @@ class DeepSeek
                 $u = $d['usage'] ?? [];
                 if (($d['choices'][0]['finish_reason'] ?? '') === 'length' && $wantJson) {
                     $res['ok'] = false;
-                    $res['error'] = 'AI 输出过长被截断，请把要求拆小一些再试（例如分两次生成）';
+                    $res['truncated'] = true;
+                    $res['error'] = 'AI 这次要写的内容太长，超出了单次输出上限。可以分两步说，例如先说“先做前半部分”，再说“继续完成剩余页面”';
                 } elseif ($wantJson) {
                     $res['json'] = self::parseJson($res['content']);
                     if ($res['json'] === null) {
@@ -264,6 +295,71 @@ class DeepSeek
         } catch (\Throwable $e) {
         }
         return $res;
+    }
+
+    /**
+     * 修复被截断的 JSON：从后往前找最后一个完整的数组元素 / 对象成员，补齐括号。
+     * 例如课件写到第 12 页中途被截断，就保留前 11 页。
+     */
+    public static function repairJson($s)
+    {
+        $s = trim((string)$s);
+        if (preg_match('/```(?:json)?\s*(.*)$/s', $s, $m)) {
+            $s = rtrim(preg_replace('/```\s*$/', '', $m[1]));
+        }
+        $a = strpos($s, '{');
+        if ($a === false) {
+            return null;
+        }
+        $s = substr($s, $a);
+        $stack = [];
+        $cuts = []; // [位置, 当时未闭合的括号]
+        $inStr = false;
+        $esc = false;
+        $len = strlen($s);
+        for ($i = 0; $i < $len; $i++) {
+            $c = $s[$i];
+            if ($inStr) {
+                if ($esc) {
+                    $esc = false;
+                } elseif ($c === '\\') {
+                    $esc = true;
+                } elseif ($c === '"') {
+                    $inStr = false;
+                }
+                continue;
+            }
+            if ($c === '"') {
+                $inStr = true;
+            } elseif ($c === '{' || $c === '[') {
+                $stack[] = $c === '{' ? '}' : ']';
+            } elseif ($c === '}' || $c === ']') {
+                array_pop($stack);
+                $cuts[] = [$i + 1, $stack];
+                if (!$stack) {
+                    break;
+                }
+            } elseif ($c === ',') {
+                $cuts[] = [$i, $stack];
+            }
+        }
+        // 优先在“一个完整元素刚结束”的位置截断（避免留下半页），不行再退到逗号处
+        foreach ([true, false] as $wholeOnly) {
+            for ($k = count($cuts) - 1, $n = 0; $k >= 0 && $n < 400; $k--) {
+                list($pos, $st) = $cuts[$k];
+                $isClose = in_array($s[$pos - 1] ?? '', ['}', ']'], true);
+                if ($wholeOnly !== $isClose) {
+                    continue;
+                }
+                $n++;
+                $try = rtrim(substr($s, 0, $pos), " \t\r\n,") . implode('', array_reverse($st));
+                $d = json_decode($try, true);
+                if (is_array($d)) {
+                    return $d;
+                }
+            }
+        }
+        return null;
     }
 
     public static function parseJson($s)
