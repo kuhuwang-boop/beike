@@ -1,0 +1,7 @@
+# 密钥与本机配置（不要提交）
+config/.env
+# 运行时数据
+storage/logs/*
+!storage/logs/.gitkeep
+public/uploads/*/*
+!public/uploads/.gitkeep

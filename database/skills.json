@@ -1,0 +1,341 @@
+[
+ {
+  "key": "retrieval",
+  "name": "检索练习",
+  "category": "记忆与学习科学",
+  "summary": "用低风险的小测让学生从记忆中“提取”知识，比重复阅读记得更牢。",
+  "instructions": "在课的开头和结尾各安排一次检索练习：开头 3–5 题回顾上节课/先修知识，结尾 3–5 题回顾本节核心。题型混合：自由回忆（“写出……的三个条件”）、提示回忆、再认（选择题）。不计分、当场核对答案，强调“想不起来也有价值”。题目覆盖关键概念和常见误区，答案要点写进讲稿。",
+  "agents": [
+   "quiz",
+   "designer",
+   "script"
+  ],
+  "evidence": "Roediger & Butler (2011); Karpicke & Roediger (2008); Dunlosky et al. (2013)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "memory-learning-science/retrieval-practice-generator"
+ },
+ {
+  "key": "dual_coding",
+  "name": "双重编码",
+  "category": "记忆与学习科学",
+  "summary": "文字讲解配合对应的图示（流程图、结构图、时间线、对比图），形成两条记忆通道。",
+  "instructions": "为每个核心概念设计一个“图像化表达”：结构关系用层级图/树，过程用流程图，变化用时间线或曲线，对比用左右对比。图与讲解同步出现，图上只留关键词，不要把整段文字放在图旁。避免纯装饰性图片。课件中优先用 two 版式做对比，用配图或图标承载概念。",
+  "agents": [
+   "slides",
+   "illustrator",
+   "designer"
+  ],
+  "evidence": "Paivio (1986); Clark & Paivio (1991); Mayer (2009) 多媒体学习原则",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "memory-learning-science/dual-coding-designer"
+ },
+ {
+  "key": "worked_example",
+  "name": "样例渐退",
+  "category": "记忆与学习科学",
+  "summary": "先给完整解题示范，再逐步“挖空”，最后独立完成，适合讲方法、算法和多步骤过程。",
+  "instructions": "按 4 级设计一组同类题：①完整样例（教师边讲边写每一步的理由）；②去掉最后一步让学生补全；③只给第一步；④完全独立。每一步标明“为什么这样做”。学生出错时退回上一级。课件中每一级单独一页，答案放讲稿。",
+  "agents": [
+   "expert",
+   "slides",
+   "quiz",
+   "script"
+  ],
+  "evidence": "Sweller & Cooper (1985); Atkinson et al. (2000); Renkl (2014)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "memory-learning-science/worked-example-fading-designer"
+ },
+ {
+  "key": "cognitive_load",
+  "name": "认知负荷控制",
+  "category": "记忆与学习科学",
+  "summary": "删除无关信息、拆分复杂内容、减少分散注意，让学生把脑力用在真正要学的地方。",
+  "instructions": "逐页检查并修改：①一页只讲一个要点，复杂内容拆成多页逐步呈现；②删除与学习目标无关的装饰性文字和图片；③图和对应文字放在一起，不要让学生来回对照；④术语第一次出现就给定义；⑤新手多给示例和结构，熟练者再减少提示。",
+  "agents": [
+   "slides",
+   "reviewer"
+  ],
+  "evidence": "Sweller (1988, 1994); Sweller, van Merriënboer & Paas (2019)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "memory-learning-science/cognitive-load-analyser"
+ },
+ {
+  "key": "elaborative",
+  "name": "追问“为什么”",
+  "category": "记忆与学习科学",
+  "summary": "用“为什么会这样”“如何联系到……”的追问，让学生解释而不是死记。",
+  "instructions": "为每个核心结论准备 1–2 个追问：“为什么……成立？”“如果条件改变会怎样？”“这和我们已经学过的……有什么联系？”。追问放在讲解后、练习前，给学生 1 分钟思考或同桌互讲，讲稿里写出预期回答和常见错误回答。",
+  "agents": [
+   "script",
+   "quiz"
+  ],
+  "evidence": "Pressley et al. (1992); Woloshyn et al. (1994); Dunlosky et al. (2013)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "memory-learning-science/elaborative-interrogation-generator"
+ },
+ {
+  "key": "interleaving",
+  "name": "交错练习",
+  "category": "记忆与学习科学",
+  "summary": "把相似但不同类型的题目混在一起练，训练学生“判断该用哪种方法”。",
+  "instructions": "课堂练习和课后作业不要按题型分块，而是把本节与前几节相近的知识点交替出题（例如 A、B、A、C、B），要求学生先判断“这题属于哪类、该用什么方法”再解答。讲稿中提醒学生注意辨别依据。",
+  "agents": [
+   "quiz",
+   "designer"
+  ],
+  "evidence": "Kornell & Bjork (2008); Rohrer et al. (2015)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "memory-learning-science/interleaving-unit-planner"
+ },
+ {
+  "key": "spaced",
+  "name": "间隔复习",
+  "category": "记忆与学习科学",
+  "summary": "按遗忘规律安排复习时间点，让知识在后续课程中反复出现。",
+  "instructions": "在作业和后续课次中安排间隔复习：本节核心内容在 1 天后（课后作业）、1 周后（下次课开头检索题）、1 个月后（单元复习）各出现一次。在“课后作业”里写明复习安排，在小结页提示下次课会回顾的内容。",
+  "agents": [
+   "designer",
+   "quiz"
+  ],
+  "evidence": "Ebbinghaus (1885); Cepeda et al. (2006)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "memory-learning-science/spaced-practice-scheduler"
+ },
+ {
+  "key": "opening",
+  "name": "课堂开场设计",
+  "category": "讲授与示范",
+  "summary": "用回顾旧知 + 先行组织者开场，把今天的内容挂到学生已有的知识上。",
+  "instructions": "开场 3–8 分钟：①2–3 道快速回顾题激活先修知识；②给出“先行组织者”——一张本节知识结构图或一个类比，说明今天内容在整体中的位置；③抛出一个与学生经验相关的问题引出本节。不要用与内容无关的热场。",
+  "agents": [
+   "designer",
+   "slides",
+   "script"
+  ],
+  "evidence": "Rosenshine (2012) 教学原则一; Ausubel (1960) 先行组织者",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "explicit-instruction/lesson-opening-designer"
+ },
+ {
+  "key": "cfu",
+  "name": "随堂理解检查",
+  "category": "讲授与示范",
+  "summary": "讲授过程中每 10–15 分钟检查一次全班理解，而不是只问“听懂了吗”。",
+  "instructions": "在每个讲授段落后安排一次全员参与的检查：举牌/手势投票、小白板、在线答题、同桌互讲后抽查。问题必须能区分“懂了”和“没懂”。讲稿中写清楚：多少人答错时要重讲、换什么方式重讲。",
+  "agents": [
+   "designer",
+   "quiz",
+   "script"
+  ],
+  "evidence": "Rosenshine (2012) 教学原则三; Wiliam (2011)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "explicit-instruction/checking-for-understanding-protocol-designer"
+ },
+ {
+  "key": "think_aloud",
+  "name": "出声思维示范",
+  "category": "讲授与示范",
+  "summary": "老师把专家解题时“脑子里在想什么”说出来，让思考过程可见。",
+  "instructions": "选择 1–2 个关键例题，在讲稿中写出完整的出声思维脚本：“我先注意到……，所以我考虑……；这里容易犯的错是……，我会这样检查……”。包括计划、监控、出错与纠正的过程，而不只是标准步骤。",
+  "agents": [
+   "script",
+   "expert"
+  ],
+  "evidence": "Bereiter & Scardamalia (1987); Wilhelm (2001)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "explicit-instruction/think-aloud-script-generator"
+ },
+ {
+  "key": "hinge",
+  "name": "铰链题诊断",
+  "category": "提问与讨论",
+  "summary": "在关键节点用一道选择题快速判断全班是否可以继续往下讲。",
+  "instructions": "在进入难点前设计 1 道铰链题：4 个选项中每个错误选项对应一种典型误解，学生 1 分钟内作答（举手或扫码）。讲稿写明：正确率 ≥80% 继续；某个错误选项集中时，针对该误解做什么补充讲解。用 quiz 版式呈现。",
+  "agents": [
+   "quiz",
+   "script"
+  ],
+  "evidence": "Wiliam (2011); Christodoulou (2017)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "questioning-discussion/hinge-question-designer"
+ },
+ {
+  "key": "socratic",
+  "name": "苏格拉底式追问",
+  "category": "提问与讨论",
+  "summary": "用一串层层递进的问题引导学生自己推出结论。",
+  "instructions": "针对一个核心概念设计 5–7 个递进问题：澄清概念 → 追问假设 → 要求证据 → 换个视角 → 推出结论/反例。每个问题写出预期回答和下一步引导语，放进讲稿；课件上只呈现关键问题。",
+  "agents": [
+   "script",
+   "designer"
+  ],
+  "evidence": "Paul & Elder (2008); Chin (2007)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "questioning-discussion/socratic-questioning-sequence-generator"
+ },
+ {
+  "key": "discussion",
+  "name": "结构化讨论",
+  "category": "提问与讨论",
+  "summary": "给讨论设定明确的规则、角色和产出，避免“讨论变闲聊”。",
+  "instructions": "根据目的选择讨论形式：思考-配对-分享（快速）、拼图法（分工学习）、辩论（观点对立）、鱼缸讨论（深度示范）。写清楚时间、分组、每人角色、讨论问题和必须交出的成果（一句话结论/一张图），以及教师巡视时的追问。",
+  "agents": [
+   "designer",
+   "case",
+   "script"
+  ],
+  "evidence": "Resnick et al. (2015) Accountable Talk; Michaels et al. (2008)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "questioning-discussion/discussion-protocol-selector"
+ },
+ {
+  "key": "erroneous",
+  "name": "错误样例辨析",
+  "category": "提问与讨论",
+  "summary": "给出含典型错误的“学生答案”，让学生找错、解释、改正。",
+  "instructions": "针对本节最常见的 1–2 个误区，各编一个看起来合理但有错误的解答，课件中请学生“找出错误并说明原因”。讲稿写清错误所在、错误根源和正确做法。适合放在讲解之后、独立练习之前。",
+  "agents": [
+   "quiz",
+   "expert"
+  ],
+  "evidence": "McLaren, Adams & Mayer (2012); McLaren et al. (2015)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "ai-learning-science/erroneous-example-designer"
+ },
+ {
+  "key": "productive_failure",
+  "name": "先尝试后讲解",
+  "category": "提问与讨论",
+  "summary": "先让学生尝试解决一个有挑战的问题，再讲解规范方法（有效失败）。",
+  "instructions": "在讲解新概念之前，给学生一个需要用到该概念、但他们可以凭已有知识尝试的问题，独立或小组尝试 5–10 分钟，收集几种不同的做法；讲解时把学生的做法与规范方法对比。讲稿写清预期的学生尝试和如何点评。",
+  "agents": [
+   "designer",
+   "case"
+  ],
+  "evidence": "Kapur (2008, 2016)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "ai-learning-science/productive-failure-desirable-difficulty-designer"
+ },
+ {
+  "key": "formative",
+  "name": "形成性评价",
+  "category": "评价与反馈",
+  "summary": "选择合适的课堂评价方式，及时知道学生学到了什么并调整教学。",
+  "instructions": "在课堂流程中至少安排 2 个形成性评价点，并写明用途：课中诊断（铰链题、举牌）、课末检查（出门条/一分钟小结）、课后（在线小测）。每个评价点说明：看什么证据、结果不理想时怎么调整。",
+  "agents": [
+   "designer",
+   "quiz"
+  ],
+  "evidence": "Black & Wiliam (1998); Wiliam (2011)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "curriculum-assessment/formative-assessment-technique-selector"
+ },
+ {
+  "key": "pbl",
+  "name": "项目式学习任务",
+  "category": "评价与反馈",
+  "summary": "用一个真实的驱动问题组织学习，学生分阶段完成项目作品。",
+  "instructions": "为本节（或单元）设计一个项目任务书：驱动问题（真实、开放）、最终作品、3–4 个阶段里程碑、分工、评价量规（3–4 个维度、各 3 个等级）。课件中用一页介绍驱动问题，作业中布置第一个里程碑。",
+  "agents": [
+   "case",
+   "designer",
+   "quiz"
+  ],
+  "evidence": "Barron & Darling-Hammond (2008); Krajcik & Shin (2014)",
+  "source": "garethmanning/education-agent-skills",
+  "license": "CC BY-SA 4.0（改编，署名-相同方式共享）",
+  "original": "curriculum-assessment/project-brief-designer"
+ },
+ {
+  "key": "boppps",
+  "name": "BOPPPS 六段式",
+  "category": "国内高校常用",
+  "summary": "导入、目标、前测、参与式学习、后测、总结，国内高校教学竞赛常用结构。",
+  "instructions": "严格按 B 导入、O 目标、P 前测、P 参与式学习、P 后测、S 总结组织课堂，各环节时间之和等于课时；参与式学习中至少一段学生动手/讨论；前测和后测题目对应学习目标。",
+  "agents": [
+   "designer",
+   "slides"
+  ],
+  "evidence": "Douglas Kerr / ISW 教师技能工作坊",
+  "source": "通用教学法",
+  "license": "—",
+  "original": ""
+ },
+ {
+  "key": "pad",
+  "name": "对分课堂",
+  "category": "国内高校常用",
+  "summary": "复旦大学张学新提出：讲授、内化吸收、讨论各占一部分，“当堂对分”或“隔堂对分”。",
+  "instructions": "把课堂时间分为三段：教师精讲框架与重难点（约一半时间，只讲“骨架”不讲细节）；学生独立内化（阅读、完成“亮考帮”：亮闪闪—学到的、考考你—难住别人的问题、帮帮我—自己不懂的）；小组讨论 + 全班交流答疑。课件中设计“亮考帮”页面。",
+  "agents": [
+   "designer",
+   "slides",
+   "script"
+  ],
+  "evidence": "张学新 (2014) 对分课堂",
+  "source": "通用教学法",
+  "license": "—",
+  "original": ""
+ },
+ {
+  "key": "case_method",
+  "name": "案例教学法",
+  "category": "国内高校常用",
+  "summary": "以真实案例为主线，引导学生分析问题、提出方案。",
+  "instructions": "选取 1 个真实、完整、有冲突或决策点的案例；课件按“案例背景 → 关键问题 → 小组分析 → 方案汇报 → 教师总结理论”组织；问题要有多种可能答案；总结时把学生分析与本节理论对应起来。",
+  "agents": [
+   "case",
+   "designer"
+  ],
+  "evidence": "哈佛商学院案例教学法",
+  "source": "通用教学法",
+  "license": "—",
+  "original": ""
+ },
+ {
+  "key": "flipped",
+  "name": "翻转课堂",
+  "category": "国内高校常用",
+  "summary": "课前自学基础内容，课堂时间用于练习、讨论和解决问题。",
+  "instructions": "划分课前与课内：课前提供 10–15 分钟的微课或阅读材料 + 3–5 道自测题；课内开头用检索题检查预习，主要时间做练习、讨论、项目，教师针对共性问题精讲。课件中区分“课前学习任务”页与课内活动页。",
+  "agents": [
+   "designer",
+   "quiz"
+  ],
+  "evidence": "Bergmann & Sams (2012)",
+  "source": "通用教学法",
+  "license": "—",
+  "original": ""
+ },
+ {
+  "key": "peer_instruction",
+  "name": "同伴教学法",
+  "category": "国内高校常用",
+  "summary": "哈佛 Mazur 提出：概念题 → 独立作答 → 同伴互相说服 → 再次作答。",
+  "instructions": "为每个核心概念设计 1 道概念测试题（ConcepTest）：学生独立作答并投票；正确率 30%–70% 时让学生找持不同答案的同学互相说服 2 分钟，再投一次；最后教师讲解。正确率过低先补讲，过高直接进入下一部分。",
+  "agents": [
+   "quiz",
+   "script"
+  ],
+  "evidence": "Mazur (1997) Peer Instruction",
+  "source": "通用教学法",
+  "license": "—",
+  "original": ""
+ }
+]

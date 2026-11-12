@@ -1,0 +1,315 @@
+-- 备课工作台 数据库结构 (MySQL 5.7+ / MariaDB 10.3+)
+SET NAMES utf8mb4;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  email VARCHAR(120) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('admin','teacher') NOT NULL DEFAULT 'teacher',
+  status ENUM('active','disabled','pending') NOT NULL DEFAULT 'active',
+  note VARCHAR(200) NOT NULL DEFAULT '',
+  ai_quota INT NULL,
+  must_change TINYINT NOT NULL DEFAULT 0,
+  last_login_at DATETIME NULL,
+  login_count INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS settings (
+  k VARCHAR(64) PRIMARY KEY,
+  v TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS courses (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  code VARCHAR(40) DEFAULT '',
+  semester VARCHAR(40) DEFAULT '',
+  credits DECIMAL(4,1) DEFAULT 0,
+  hours INT DEFAULT 0,
+  lesson_minutes INT NOT NULL DEFAULT 90,
+  audience VARCHAR(120) DEFAULT '',
+  syllabus MEDIUMTEXT,
+  attain_threshold DECIMAL(4,2) NOT NULL DEFAULT 0.70,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 毕业要求指标点
+CREATE TABLE IF NOT EXISTS grad_reqs (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  course_id INT UNSIGNED NOT NULL,
+  code VARCHAR(20) NOT NULL,
+  content TEXT NOT NULL,
+  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 课程目标 CLO
+CREATE TABLE IF NOT EXISTS objectives (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  course_id INT UNSIGNED NOT NULL,
+  code VARCHAR(20) NOT NULL,
+  content TEXT NOT NULL,
+  bloom TINYINT NOT NULL DEFAULT 2,
+  weight DECIMAL(5,2) NOT NULL DEFAULT 0,
+  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS objective_req (
+  objective_id INT UNSIGNED NOT NULL,
+  grad_req_id INT UNSIGNED NOT NULL,
+  level ENUM('H','M','L') NOT NULL DEFAULT 'M',
+  PRIMARY KEY (objective_id, grad_req_id),
+  FOREIGN KEY (objective_id) REFERENCES objectives(id) ON DELETE CASCADE,
+  FOREIGN KEY (grad_req_id) REFERENCES grad_reqs(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS lessons (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  course_id INT UNSIGNED NOT NULL,
+  seq INT NOT NULL DEFAULT 1,
+  title VARCHAR(200) NOT NULL,
+  class_date DATE NULL,
+  duration_min INT NOT NULL DEFAULT 90,
+  key_points TEXT,
+  difficult_points TEXT,
+  misconceptions TEXT,
+  ideology TEXT,
+  resources TEXT,
+  homework TEXT,
+  reflection TEXT,
+  status ENUM('draft','ready','taught') NOT NULL DEFAULT 'draft',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX (course_id),
+  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS lesson_objectives (
+  lesson_id INT UNSIGNED NOT NULL,
+  objective_id INT UNSIGNED NOT NULL,
+  PRIMARY KEY (lesson_id, objective_id),
+  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
+  FOREIGN KEY (objective_id) REFERENCES objectives(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- BOPPPS 环节
+CREATE TABLE IF NOT EXISTS lesson_segments (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  lesson_id INT UNSIGNED NOT NULL,
+  sort INT NOT NULL DEFAULT 0,
+  phase ENUM('B','O','P1','P2','P3','S') NOT NULL,
+  minutes INT NOT NULL DEFAULT 0,
+  teacher_act TEXT,
+  student_act TEXT,
+  objective_id INT UNSIGNED NULL,
+  assess_method VARCHAR(200) DEFAULT '',
+  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
+  FOREIGN KEY (objective_id) REFERENCES objectives(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS questions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  course_id INT UNSIGNED NOT NULL,
+  objective_id INT UNSIGNED NULL,
+  bloom TINYINT NOT NULL DEFAULT 2,
+  qtype VARCHAR(20) NOT NULL DEFAULT '简答',
+  stem TEXT NOT NULL,
+  options TEXT,
+  answer TEXT,
+  analysis TEXT,
+  difficulty_est TINYINT NOT NULL DEFAULT 3,
+  score DECIMAL(5,1) NOT NULL DEFAULT 10,
+  source VARCHAR(20) NOT NULL DEFAULT '手工',
+  evidence TEXT,
+  evidence_ok TINYINT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (course_id),
+  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+  FOREIGN KEY (objective_id) REFERENCES objectives(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS papers (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  course_id INT UNSIGNED NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS paper_items (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  paper_id INT UNSIGNED NOT NULL,
+  question_id INT UNSIGNED NOT NULL,
+  sort INT NOT NULL DEFAULT 0,
+  score DECIMAL(5,1) NOT NULL,
+  FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 逐题成绩（每次导入覆盖该试卷旧成绩）
+CREATE TABLE IF NOT EXISTS scores (
+  paper_id INT UNSIGNED NOT NULL,
+  student_no VARCHAR(40) NOT NULL,
+  item_id INT UNSIGNED NOT NULL,
+  score DECIMAL(5,1) NOT NULL,
+  PRIMARY KEY (paper_id, student_no, item_id),
+  FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
+  FOREIGN KEY (item_id) REFERENCES paper_items(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ai_logs (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  action VARCHAR(40) NOT NULL,
+  ok TINYINT NOT NULL DEFAULT 1,
+  prompt_tokens INT DEFAULT 0,
+  completion_tokens INT DEFAULT 0,
+  ms INT DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- PPT 课件（每个课次一份，slides 为 JSON）
+CREATE TABLE IF NOT EXISTS decks (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  lesson_id INT UNSIGNED NOT NULL UNIQUE,
+  theme VARCHAR(20) NOT NULL DEFAULT 'blue',
+  slides MEDIUMTEXT,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 教师导入的原始备课资料（从 Word/PPT/PDF 提取的文字）
+CREATE TABLE IF NOT EXISTS materials (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  lesson_id INT UNSIGNED NOT NULL,
+  filename VARCHAR(200) NOT NULL,
+  content MEDIUMTEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (lesson_id),
+  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- AI 对原资料的改进说明
+CREATE TABLE IF NOT EXISTS lesson_meta (
+  lesson_id INT UNSIGNED PRIMARY KEY,
+  objectives_text TEXT,
+  learner_text TEXT,
+  content_text MEDIUMTEXT,
+  board_text TEXT,
+  improve_report MEDIUMTEXT,
+  skills_text VARCHAR(500),
+  lesson_type VARCHAR(20) DEFAULT '',
+  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 与 AI 课件团队的对话
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  lesson_id INT UNSIGNED NOT NULL,
+  role ENUM('user','agent','system') NOT NULL,
+  agent VARCHAR(20) DEFAULT '',
+  content MEDIUMTEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (lesson_id),
+  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 课件历史版本（用于撤销）
+CREATE TABLE IF NOT EXISTS deck_versions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  lesson_id INT UNSIGNED NOT NULL,
+  slides MEDIUMTEXT,
+  note VARCHAR(200) DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (lesson_id),
+  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- AI 团队任务（每次对话产生一轮 run，含多个步骤）
+CREATE TABLE IF NOT EXISTS agent_tasks (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  lesson_id INT UNSIGNED NOT NULL,
+  run_id INT UNSIGNED NOT NULL,
+  sort INT NOT NULL DEFAULT 0,
+  agent VARCHAR(20) NOT NULL,
+  task TEXT,
+  status ENUM('pending','running','done','failed','cancelled') NOT NULL DEFAULT 'pending',
+  result MEDIUMTEXT,
+  model VARCHAR(60) DEFAULT '',
+  tokens INT DEFAULT 0,
+  started_at DATETIME NULL,
+  finished_at DATETIME NULL,
+  ms INT DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (lesson_id, run_id),
+  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 教学技能库：可复用的教学方法，选中后注入 AI 团队的工作要求
+CREATE TABLE IF NOT EXISTS skills (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  skey VARCHAR(40) NOT NULL,
+  name VARCHAR(60) NOT NULL,
+  category VARCHAR(40) NOT NULL DEFAULT '其他',
+  summary VARCHAR(500) DEFAULT '',
+  instructions TEXT,
+  agents VARCHAR(200) DEFAULT '',
+  evidence VARCHAR(300) DEFAULT '',
+  source VARCHAR(200) DEFAULT '',
+  license VARCHAR(100) DEFAULT '',
+  enabled TINYINT NOT NULL DEFAULT 1,
+  sort INT NOT NULL DEFAULT 0,
+  builtin TINYINT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  user_id INT UNSIGNED NULL DEFAULT NULL,
+  UNIQUE KEY (skey)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 学校 PPT 模板（老师上传，浏览器解析后保存背景图、装饰和版面位置）
+CREATE TABLE IF NOT EXISTS templates (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(60) NOT NULL,
+  data MEDIUMTEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 个人资料库：每位老师自己的备课资料，可在多份课件中反复使用
+CREATE TABLE IF NOT EXISTS library (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  folder VARCHAR(60) NOT NULL DEFAULT '',
+  filename VARCHAR(200) NOT NULL,
+  content MEDIUMTEXT,
+  chars INT NOT NULL DEFAULT 0,
+  hash VARCHAR(40) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- AI 教学视频（MiniMax H3）：异步任务，成片下载到 public/uploads/video
+CREATE TABLE IF NOT EXISTS videos (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  lesson_id INT UNSIGNED NOT NULL,
+  task_id VARCHAR(64) NOT NULL DEFAULT '',
+  model VARCHAR(40) NOT NULL DEFAULT '',
+  prompt TEXT,
+  duration INT NOT NULL DEFAULT 6,
+  ratio VARCHAR(10) NOT NULL DEFAULT '16:9',
+  status VARCHAR(16) NOT NULL DEFAULT 'queued',
+  src VARCHAR(255) NOT NULL DEFAULT '',
+  error VARCHAR(255) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NULL,
+  INDEX (user_id, created_at),
+  INDEX (lesson_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
