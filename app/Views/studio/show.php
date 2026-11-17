@@ -20,6 +20,7 @@
     <div class="dropdown">
       <button class="btn ghost sm" onclick="this.parentNode.classList.toggle('open')">更多<?= ico('chevron-down') ?></button>
       <div class="menu">
+        <a href="/studio/<?= (int)$lesson['id'] ?>/present" target="_blank" class="m-only"><?= ico('presentation-analytics') ?>上课（直接放映）</a>
         <a href="#" class="m-only" onclick="Studio.pickStyle();return false"><?= ico('palette') ?>样式与学校模板<em class="menu-cur" id="m-style-n"></em></a>
         <a href="#" class="m-only" onclick="Studio.undo();return false"><?= ico('arrow-back-up') ?>撤销上一次修改</a>
         <a href="/lessons/<?= $lesson['id'] ?>/slides" class="m-only"><?= ico('pencil') ?>逐页编辑</a>
@@ -34,6 +35,7 @@
         <form method="post" action="/studio/<?= $lesson['id'] ?>/delete" data-confirm="删除这份课件及其资料和对话？不可恢复。"><?= csrf_field() ?><button><?= ico('trash') ?>删除这份课件</button></form>
       </div>
     </div>
+    <a class="btn ghost sm present-btn" href="/studio/<?= (int)$lesson['id'] ?>/present" target="_blank" title="在浏览器里直接放映，带讲稿、计时和答案"><?= ico('presentation-analytics') ?><span>上课</span></a>
     <button class="btn primary sm dl-btn" onclick="Studio.download()"><?= ico('download') ?><span>下载 PPT</span></button>
   </div>
 </div>
@@ -75,6 +77,7 @@
         <input type="file" id="img-up" accept="image/*" hidden>
         <a class="btn ghost sm" id="edit-this" href="#"><?= ico('pencil') ?>手动编辑</a>
       </div>
+      <div class="ground-here" id="ground-here" hidden></div>
       <div class="notes-box" id="notes"></div>
       <div class="strip" id="strip"></div>
     </div>
@@ -105,7 +108,7 @@ window.STUDIO = <?= json_encode([
 <script src="/assets/vendor/jszip.min.js"></script>
 <script src="/assets/vendor/pdf.min.js"></script>
 <script src="/assets/extract.js?v=22"></script>
-<script src="/assets/template.js?v=26"></script>
+<script src="/assets/template.js?v=27"></script>
 <script src="/assets/diagram.js?v=22"></script>
-<script src="/assets/deckkit.js?v=26"></script>
-<script src="/assets/studio.js?v=26"></script>
+<script src="/assets/deckkit.js?v=27"></script>
+<script src="/assets/studio.js?v=27"></script>

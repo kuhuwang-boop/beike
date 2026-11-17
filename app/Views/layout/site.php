@@ -14,9 +14,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title><?= e($title ?? '备课工作台') ?></title>
-<link rel="stylesheet" href="/assets/app.css?v=26">
+<link rel="stylesheet" href="/assets/app.css?v=27">
 <link rel="stylesheet" href="/assets/site.css?v=22">
-<script src="/assets/app.js?v=26"></script>
+<script src="/assets/app.js?v=27"></script>
 </head>
 <body class="site-body">
 <header class="site-nav">

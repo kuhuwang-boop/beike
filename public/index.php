@@ -74,6 +74,7 @@ $r->get('/about', [C\SiteController::class, 'about'], $g);
 $r->get('/manual', [C\SiteController::class, 'manual'], $g);
 $r->post('/studio', [C\StudioController::class, 'create'], $j);
 $r->get('/studio/{id}', [C\StudioController::class, 'show']);
+$r->get('/studio/{id}/present', [C\StudioController::class, 'present']);
 $r->get('/studio/{id}/state', [C\StudioController::class, 'state'], $j);
 $r->post('/studio/{id}/materials', [C\StudioController::class, 'addMaterial'], $j);
 $r->post('/studio/{id}/materials/{mid}/delete', [C\StudioController::class, 'deleteMaterial'], $j);

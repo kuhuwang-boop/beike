@@ -212,6 +212,27 @@ class Agents
         return "课程：{$course['name']}" . ($course['audience'] ? "（授课对象：{$course['audience']}）" : '') . "\n本次课：{$lesson['title']}，时长 {$lesson['duration_min']} 分钟\n";
     }
 
+    /** 给质量督导的重点：系统逐条对照资料后，找不到出处的内容和数字 */
+    private static function groundHint($lessonId, array $slides)
+    {
+        try {
+            $g = Grounding::check($lessonId, $slides);
+        } catch (\Throwable $e) {
+            return '';
+        }
+        $rows = array_filter($g['items'] ?? [], function ($x) {
+            return $x['status'] === 'ai' || $x['nums'];
+        });
+        if (!$rows) {
+            return '';
+        }
+        $t = "【系统逐条对照老师资料的结果——下面这些内容在资料里找不到出处，请重点核查事实是否准确】\n";
+        foreach (array_slice($rows, 0, 25) as $x) {
+            $t .= "第{$x['page']}页 {$x['field']}：{$x['text']}" . ($x['nums'] ? '（资料里没有：' . implode('、', $x['nums']) . '）' : '') . ($x['quote'] ? "；资料中最接近的原文：{$x['quote']}" : '') . "\n";
+        }
+        return $t . "核查原则：与资料矛盾的改成资料的说法；资料没有、又不能确定真实性的数字或断言，删掉或改成定性描述；举例、类比、过渡语可保留。\n\n";
+    }
+
     /** 交叉复核时强制使用的模型 */
     public static $force = null;
 
@@ -458,6 +479,7 @@ class Agents
             . "【老师的原始资料】" . (self::materials($lesson['id'], $agent === 'reviewer' ? 24000 : 14000) ?: '（未上传）') . "\n\n"
             . "【教学设计与内容要点】\n" . self::planText($lesson, in_array($agent, ['slides', 'script', 'reviewer'], true)) . "\n"
             . "【当前课件】\n" . self::deckText($slides, $agent === 'script' ? 0 : 80) . "\n"
+            . ($agent === 'reviewer' ? self::groundHint($lesson['id'], $slides) : '')
             . "【任务】{$task}\n\n"
             . self::roleText($agent) . "\n" . self::SLIDE_SCHEMA . "\n" . (in_array($agent, ['slides', 'diagram', 'reviewer'], true) ? self::diagramGuide() : '') . self::OPS_RULE . "\n"
             . 'message 用一两句话告诉老师你做了什么。输出：{"message":"","mode":"patch","slides":[],"ops":[],"lesson_updates":{},"bank":[{"qtype":"单选","stem":"","options":[],"answer":"","analysis":""}]}';
@@ -786,6 +808,35 @@ class Agents
 
     /* ---------------- 课件体检（确定性规则，不依赖 AI） ---------------- */
 
+    /**
+     * 估算每页要讲多久（分钟）：讲稿里写了“【约N分钟】”就用它；
+     * 否则按讲稿字数（课堂讲授约 200 字/分钟，再加板书、停顿）和页面类型估算。
+     */
+    public static function pace(array $slides)
+    {
+        $out = [];
+        foreach ($slides as $s) {
+            $notes = (string)($s['notes'] ?? '');
+            if (preg_match('/【约\s*(\d+(?:\.\d+)?)\s*(?:[-–~～至到]\s*(\d+(?:\.\d+)?))?\s*分钟/u', $notes, $m)) {
+                $out[] = round(isset($m[2]) && $m[2] !== '' ? ($m[1] + $m[2]) / 2 : (float)$m[1], 1);
+                continue;
+            }
+            $chars = mb_strlen(preg_replace('/\s+|（图片来源：[^）]*）|（视频由[^）]*）/u', '', $notes));
+            $lay = $s['layout'] ?? 'bullets';
+            $base = ['title' => 1, 'section' => 0.5, 'objectives' => 1.5, 'summary' => 2, 'quiz' => 3, 'two' => 3, 'diagram' => 3, 'bullets' => 2.5, 'video' => 1][$lay] ?? 2.5;
+            $talk = $chars / 200 * 1.4;
+            $min = max($base, $talk);
+            if ($lay === 'quiz') {
+                $min = max($min, 3); // 学生思考、作答、讲评
+            }
+            if ($lay === 'video') {
+                $min = (int)($s['video']['dur'] ?? 8) / 60 + 1.5; // 播放 + 引导讨论
+            }
+            $out[] = round(min($min, 15), 1);
+        }
+        return $out;
+    }
+
     public static function health(array $slides, $minutes)
     {
         $out = [];
@@ -793,12 +844,22 @@ class Agents
         if (!$n) {
             return [];
         }
-        $per = $minutes / max(1, $n);
-        if ($per < 2) {
-            $out[] = ['warn', "共 {$n} 页，平均每页不到 2 分钟，可能讲不完或节奏过快。"];
-        } elseif ($per > 8) {
-            $out[] = ['warn', "共 {$n} 页，平均每页超过 8 分钟，内容可能偏少或讲授过长。"];
+        // 按讲稿估算总时长，与课时对比
+        $pace = self::pace($slides);
+        $total = array_sum($pace);
+        if ($minutes > 0 && $total > $minutes * 1.12) {
+            arsort($pace);
+            $long = array_map(function ($i) {
+                return $i + 1;
+            }, array_slice(array_keys($pace), 0, 3));
+            sort($long);
+            $out[] = ['warn', '按讲稿估算约 ' . round($total) . " 分钟，超出课时 {$minutes} 分钟约 " . round($total - $minutes) . ' 分钟，可能讲不完。最耗时的是第 ' . implode('、', $long) . ' 页，可以精简或移到课后。'];
+        } elseif ($minutes > 0 && $total < $minutes * 0.7) {
+            $out[] = ['warn', '按讲稿估算约 ' . round($total) . " 分钟，比课时 {$minutes} 分钟少不少，可以增加例题、讨论或练习。"];
+        } elseif ($minutes > 0) {
+            $out[] = ['ok', '按讲稿估算约 ' . round($total) . " 分钟，与课时 {$minutes} 分钟基本吻合。"];
         }
+
         $quiz = 0;
         $img = 0;
         $noNotes = 0;

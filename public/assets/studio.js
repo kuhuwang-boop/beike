@@ -238,7 +238,15 @@
     var bigHtml = DeckKit.preview(s, cur, S.theme, C.course, { live: true });
     if (bigHtml !== lastBig) { $('big').innerHTML = bigHtml; lastBig = bigHtml; }
     var bv = $('b-video'); if (bv) bv.innerHTML = ico('movie') + (s.layout === 'video' ? '重新生成' : '视频');
-    $('pg').textContent = '第 ' + (cur + 1) + ' / ' + n + ' 页 · ' + (DeckKit.PHASES[s.phase] || '');
+    var pm = (S.pace || [])[cur];
+    $('pg').textContent = '第 ' + (cur + 1) + ' / ' + n + ' 页' + (DeckKit.PHASES[s.phase] ? ' · ' + DeckKit.PHASES[s.phase] : '') + (pm ? ' · 约 ' + pm + ' 分钟' : '');
+    var gi = ((S.ground || {}).items || []).filter(function (x) { return x.page === cur + 1; });
+    var gb = $('ground-here');
+    if (gb) {
+      var na = gi.filter(function (x) { return x.status === 'ai'; }).length, nn = gi.filter(function (x) { return x.nums.length; }).length;
+      gb.hidden = !(na || nn);
+      gb.innerHTML = (nn ? ico('alert-triangle') + '本页有 ' + nn + ' 处数字在你的资料里找不到' : ico('info-circle') + '本页有 ' + na + ' 条内容是 AI 补充的') + '，<a href="#" onclick="Studio.tab(\'check\');return false">去核对</a>';
+    }
     var note = (s.notes || '') + (s.layout === 'quiz' && s.answer ? '\n答案：' + s.answer : '');
     $('notes').innerHTML = note ? '<b>讲稿备注</b>' + nl2br(note) : '';
     $('strip').innerHTML = S.slides.map(function (sl, i) {
@@ -259,7 +267,7 @@
       '<p class="muted small">想调整？直接在对话里说，例如“导入环节换成一个视频案例”。也可以 <a href="/lessons/' + C.id + '/word">下载教案 Word</a>。</p></div>';
   }
   function renderCheck() {
-    var warn = S.health.filter(function (h) { return h[0] === 'warn'; }).length;
+    var warn = S.health.filter(function (h) { return h[0] === 'warn'; }).length + (((S.ground || {}).sum || {}).nums ? 1 : 0);
     $('check-n').textContent = warn ? warn : '';
     var h = '<div class="plan"><div class="pl"><h4>课件体检 <small class="muted">（按固定规则自动检查，不依赖 AI）</small></h4><ul class="checks">' +
       (S.health.length ? S.health.map(function (x) { return '<li class="' + (x[0] === 'ok' ? 'info' : x[0]) + '">' + esc(x[1]) + '</li>'; }).join('') : '<li class="info">生成课件后会自动检查。</li>') + '</ul>' +
@@ -269,7 +277,34 @@
         return '<li><b>原资料：</b>' + esc(x.issue || '') + '<br><b>调整：</b>' + esc(x.change || '') + '</li>';
       }).join('') + '</ul></div>';
     }
+    h += groundHtml();
     $('tab-check').innerHTML = h + '</div>';
+  }
+  /* 出处核对：哪些内容来自老师的资料，哪些是 AI 补充的 */
+  function groundHtml() {
+    var G = S.ground || {}, u = G.sum || {};
+    var h = '<div class="pl gr"><h4>出处核对 <small class="muted">（逐条对照你的资料，不依赖 AI）</small></h4>';
+    if (!S.slides.length) return h + '<p class="muted small">生成课件后自动核对。</p></div>';
+    if (!G.has) return h + '<p class="muted small">这节课还没有资料可对照。上传讲义、教材或旧课件后，这里会逐条标出哪些内容来自你的资料、哪些是 AI 补充的，以及资料里查不到的数字。</p></div>';
+    if (!u.all) return h + '<p class="muted small">课件里没有需要核对的要点。</p></div>';
+    var pc = function (k) { return Math.round((u[k] || 0) * 100 / u.all); };
+    h += '<div class="gr-bar"><i class="src" style="width:' + pc('src') + '%"></i><i class="part" style="width:' + pc('part') + '%"></i><i class="ai" style="width:' + pc('ai') + '%"></i></div>' +
+      '<p class="gr-sum small">共核对 ' + u.all + ' 条：<b class="c-src">有出处 ' + (u.src || 0) + '</b> · <b class="c-part">部分有出处 ' + (u.part || 0) + '</b> · <b class="c-ai">AI 补充 ' + (u.ai || 0) + '</b>' +
+      (u.nums ? ' · <b class="c-num">' + u.nums + ' 处数字资料里没有</b>' : '') + '</p>' +
+      '<p class="muted small">AI 补充不一定是错的（例如举例、过渡语），但上课前值得扫一眼；数字、年份、百分比请务必核实。</p>';
+    var items = G.items || [];
+    if (!items.length) return h + '<p class="ok-line small">' + ico('check') + '所有内容都能在资料里找到出处。</p></div>';
+    var lab = { ai: 'AI 补充', part: '部分有出处', num: '讲稿数字', src: '有出处' };
+    h += '<ul class="gr-list">' + items.slice(0, 40).map(function (x, k) {
+      return '<li class="g-' + x.status + (x.nums.length ? ' g-num' : '') + '"><div class="gr-h"><a href="#" onclick="Studio.show(' + (x.page - 1) + ');Studio.pane(\'stage\');return false">第 ' + x.page + ' 页</a><span class="gr-tag">' + (x.nums.length ? '数字待核实' : lab[x.status]) + '</span><span class="muted">' + esc(x.field) + '</span></div>' +
+        '<div class="gr-t">' + esc(x.text) + '</div>' +
+        (x.nums.length ? '<div class="gr-n">资料里找不到：' + x.nums.map(function (n) { return '<code>' + esc(n) + '</code>'; }).join(' ') + '</div>' : '') +
+        (x.quote ? '<div class="gr-q"><span>最接近的资料原文</span>' + esc(x.quote) + '</div>' : '') +
+        '<button class="btn ghost sm" onclick="Studio.verify(' + k + ')">' + ico('shield-check') + '让 AI 按资料核对这条</button></li>';
+    }).join('') + '</ul>' + (items.length > 40 ? '<p class="muted small">只显示前 40 条。</p>' : '');
+    var pages = []; items.forEach(function (x) { if ((x.status === 'ai' || x.nums.length) && pages.indexOf(x.page) < 0) pages.push(x.page); });
+    if (pages.length) h += '<button class="btn sm" onclick="Studio.verifyAll()">' + ico('shield-check') + '让 AI 逐条核对这些内容</button>';
+    return h + '</div>';
   }
   function renderAll() { renderDeck(); renderPlan(); renderCheck(); renderMats(); renderPanel(); $('btn-undo').disabled = !S.versions; }
   function refresh() {
@@ -416,6 +451,21 @@
     togglePanel: function () { applyPanel(document.body.classList.contains('panel-closed')); },
     show: function (i) { cur = i; renderDeck(); },
     go: function (d) { if (!S.slides.length) return; cur = Math.max(0, Math.min(S.slides.length - 1, cur + d)); renderDeck(); },
+    verify: function (k) {
+      var x = ((S.ground || {}).items || [])[k]; if (!x) return;
+      cur = x.page - 1; setFocus(x.page); renderDeck();
+      send('请对照我的资料核对第 ' + x.page + ' 页的这条内容：「' + x.text + '」。' + (x.nums.length ? '其中 ' + x.nums.join('、') + ' 在资料里找不到。' : '') +
+        '以资料为准：资料有依据的改成资料的准确说法；资料没有、你也不能确定的数字或说法，删掉或改成定性描述，并在讲稿里注明“需核实”。不要改动其他内容。');
+    },
+    verifyAll: function () {
+      var items = ((S.ground || {}).items || []).filter(function (x) { return x.status === 'ai' || x.nums.length; }).slice(0, 15);
+      if (!items.length) return;
+      send('请对照我的资料，逐条核对下面这些在资料里找不到出处的内容（以资料为准；资料有依据的改成准确说法，资料没有、又不能确定的数字或说法删掉或改成定性描述，并在讲稿注明“需核实”；举例、过渡语这类不涉及事实的可以保留）：\n' +
+        items.map(function (x) { return '第' + x.page + '页 ' + x.field + '：「' + x.text + '」' + (x.nums.length ? '（' + x.nums.join('、') + ' 资料里没有）' : ''); }).join('\n'));
+    },
+    tab: function (name) {
+      var b = document.querySelector('[data-tab="' + name + '"]'); if (b) b.click();
+    },
     focusCur: function () { if (!S.slides.length) return; setFocus(cur + 1); if (isMobile()) Studio.pane('chat'); ta.focus(); },
     unfocus: function () { setFocus(0); },
     stop: function () {

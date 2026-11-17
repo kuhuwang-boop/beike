@@ -13,8 +13,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>备课工作台</title>
-<link rel="stylesheet" href="/assets/app.css?v=26">
-<script src="/assets/app.js?v=26"></script>
+<link rel="stylesheet" href="/assets/app.css?v=27">
+<script src="/assets/app.js?v=27"></script>
 </head>
 <body class="auth-body">
 <div class="auth-card">

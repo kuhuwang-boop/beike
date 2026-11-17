@@ -40,7 +40,7 @@ window.DECK_INIT = <?= json_encode(['lessonId' => (int)$lesson['id'], 'slides' =
 </script>
 <script src="/assets/pptxgen.bundle.js"></script>
 <script src="/assets/vendor/jszip.min.js"></script>
-<script src="/assets/template.js?v=26"></script>
+<script src="/assets/template.js?v=27"></script>
 <script src="/assets/diagram.js?v=22"></script>
-<script src="/assets/deckkit.js?v=26"></script>
-<script src="/assets/slides.js?v=26"></script>
+<script src="/assets/deckkit.js?v=27"></script>
+<script src="/assets/slides.js?v=27"></script>

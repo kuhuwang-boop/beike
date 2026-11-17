@@ -14,9 +14,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title><?= isset($title) ? e($title) . ' · ' : '' ?>课件工作室</title>
-<link rel="stylesheet" href="/assets/app.css?v=26">
-<link rel="stylesheet" href="/assets/studio.css?v=26">
-<script src="/assets/app.js?v=26"></script>
+<link rel="stylesheet" href="/assets/app.css?v=27">
+<link rel="stylesheet" href="/assets/studio.css?v=27">
+<script src="/assets/app.js?v=27"></script>
 </head>
 <body class="studio-body">
 <?= $content ?>

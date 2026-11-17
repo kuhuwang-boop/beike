@@ -169,5 +169,5 @@ function release_session()
 /** 线性图标（Tabler Icons 精简集，见 public/assets/icons.svg） */
 function ico($name, $cls = '')
 {
-    return '<svg class="ico' . ($cls ? ' ' . $cls : '') . '" aria-hidden="true"><use href="/assets/icons.svg?v=26#i-' . $name . '"></use></svg>';
+    return '<svg class="ico' . ($cls ? ' ' . $cls : '') . '" aria-hidden="true"><use href="/assets/icons.svg?v=27#i-' . $name . '"></use></svg>';
 }

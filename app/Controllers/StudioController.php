@@ -150,6 +150,8 @@ class StudioController
             'slides' => $slides,
             'theme' => $deck['theme'] ?? 'blue',
             'health' => Agents::health($slides, (int)$lesson['duration_min']),
+            'pace' => Agents::pace($slides),
+            'ground' => self::grounding($lesson['id'], $slides),
             'materials' => DB::all('SELECT id, filename, CHAR_LENGTH(content) chars FROM materials WHERE lesson_id=? ORDER BY id', [$lesson['id']]),
             'versions' => (int)DB::val('SELECT COUNT(*) FROM deck_versions WHERE lesson_id=?', [$lesson['id']]),
             'objectives' => $meta['objectives_text'] ?? '',
@@ -171,6 +173,48 @@ class StudioController
                 'segs' => \App\Services\Repo::segments($lesson['id']),
             ],
         ];
+    }
+
+    /** 出处核对结果按“课件内容 + 资料”缓存，避免每次刷新都重算 */
+    public static function grounding($lessonId, array $slides)
+    {
+        try {
+            $sig = md5(json_encode($slides, JSON_UNESCAPED_UNICODE) . '|' . DB::val('SELECT CONCAT(COUNT(*), "-", COALESCE(SUM(CHAR_LENGTH(content)),0), "-", COALESCE(MAX(id),0)) FROM materials WHERE lesson_id=?', [$lessonId]));
+            $dir = BASE_PATH . '/storage/cache';
+            $f = $dir . '/ground_' . (int)$lessonId . '.json';
+            if (is_file($f)) {
+                $c = json_decode((string)file_get_contents($f), true);
+                if (($c['sig'] ?? '') === $sig) {
+                    return $c['data'];
+                }
+            }
+            $data = \App\Services\Grounding::check($lessonId, $slides);
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+            @file_put_contents($f, json_encode(['sig' => $sig, 'data' => $data], JSON_UNESCAPED_UNICODE));
+            return $data;
+        } catch (\Throwable $e) {
+            return ['has' => false, 'items' => [], 'sum' => [], 'error' => true];
+        }
+    }
+
+    /** 上课模式：直接在浏览器里放映，带演讲者视图（讲稿、计时、下一页、答案） */
+    public function present($id)
+    {
+        $lesson = Auth::lesson($id);
+        $course = Auth::course($lesson['course_id']);
+        $deck = DB::one('SELECT theme, slides FROM decks WHERE lesson_id=?', [$id]);
+        $slides = $deck ? (json_decode($deck['slides'], true) ?: []) : [];
+        if (!$slides) {
+            flash('这节课还没有课件，先和 AI 团队做好课件再上课', 'err');
+            redirect('studio/' . (int)$id);
+        }
+        View::render('studio/present', ['P' => [
+            'id' => (int)$id, 'title' => $lesson['title'], 'course' => $course['name'], 'minutes' => (int)$lesson['duration_min'],
+            'slides' => $slides, 'theme' => $deck['theme'] ?: 'blue', 'pace' => Agents::pace($slides),
+            'templates' => \App\Services\Templates::forUser(Auth::id()), 'brand' => \App\Services\Brand::forUser(Auth::id()),
+        ]], null);
     }
 
     public function state($id)

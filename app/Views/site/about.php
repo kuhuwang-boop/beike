@@ -119,7 +119,7 @@ $flow = [['designer', '梳理学习目标和课堂流程'], ['slides', '按教�
 </section>
 
 <script src="/assets/diagram.js?v=22"></script>
-<script src="/assets/deckkit.js?v=26"></script>
+<script src="/assets/deckkit.js?v=27"></script>
 <script>
 (function () {
   var deck = <?= json_encode($demo, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;

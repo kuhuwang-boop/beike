@@ -79,9 +79,9 @@ $icon = $school['icon'];
 </div>
 
 <script src="/assets/vendor/jszip.min.js"></script>
-<script src="/assets/template.js?v=26"></script>
+<script src="/assets/template.js?v=27"></script>
 <script src="/assets/diagram.js?v=22"></script>
-<script src="/assets/deckkit.js?v=26"></script>
+<script src="/assets/deckkit.js?v=27"></script>
 <script>
 var Brand = (function () {
   var school = <?= json_encode($school, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_UNESCAPED_SLASHES) ?>;

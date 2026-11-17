@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
 /* 备课工作台 前端脚本（无第三方依赖） */
 var CSRF = (document.querySelector('meta[name=csrf]') || {}).content || '';
 
-function ico(name, cls) { return '<svg class="ico' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="/assets/icons.svg?v=26#i-' + name + '"></use></svg>'; }
+function ico(name, cls) { return '<svg class="ico' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="/assets/icons.svg?v=27#i-' + name + '"></use></svg>'; }
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];

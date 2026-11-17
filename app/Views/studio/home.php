@@ -73,9 +73,9 @@
 <script src="/assets/vendor/jszip.min.js"></script>
 <script src="/assets/vendor/pdf.min.js"></script>
 <script src="/assets/extract.js?v=22"></script>
-<script src="/assets/template.js?v=26"></script>
+<script src="/assets/template.js?v=27"></script>
 <script src="/assets/diagram.js?v=22"></script>
-<script src="/assets/deckkit.js?v=26"></script>
+<script src="/assets/deckkit.js?v=27"></script>
 <script>
 var Starter = (function () {
   var files = [];
