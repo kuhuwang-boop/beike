@@ -49,11 +49,15 @@ export async function lessonView(store, l, base) {
  * @param {import('./store.js').Store} o.store
  * @param {string} o.base 路径前缀，例如 /beike
  * @param {(req)=>number|undefined} [o.reject] 宿主的访问控制（返回 401/403 表示拒绝）
- * @param {string} [o.token] 独立端口模式的访问口令
+ * @param {()=>number} [o.localPort] 本机端口模式：只接受 Host 为 127.0.0.1 / localhost:端口 的请求（防 DNS 重绑定）
  */
-export function createHandler({ store, base, reject, token, logger }) {
-  const cookieName = 'beike_t'
-  const hasToken = req => !token || (req.headers.cookie || '').split(/;\s*/).includes(`${cookieName}=${token}`)
+export function createHandler({ store, base, reject, localPort, logger }) {
+  const hostOk = (req) => {
+    if (!localPort) return true
+    const h = String(req.headers.host || '').toLowerCase()
+    const port = localPort()
+    return h === `127.0.0.1:${port}` || h === `localhost:${port}` || h === `[::1]:${port}`
+  }
 
   return async function handle(req, res) {
     try {
@@ -65,11 +69,8 @@ export function createHandler({ store, base, reject, token, logger }) {
       const rj = reject?.(req)
       if (rj) return fail(res, rj, '没有访问权限')
 
-      // 独立端口模式：首次通过带口令的链接进入，换成 Cookie
-      if (token && url.searchParams.get('t') === token) {
-        return send(res, 302, '', 'text/plain', { Location: base + (p === '/' ? '/' : p), 'Set-Cookie': `${cookieName}=${token}; Path=${base}; HttpOnly; SameSite=Strict` })
-      }
-      if (!hasToken(req)) return send(res, 401, '<meta charset="utf-8"><p style="font:16px sans-serif;padding:40px">请在 DeepSeek Harness 里让 AI 调用 <b>beike_open</b>，用它给出的链接打开备课工作台。</p>', 'text/html; charset=utf-8')
+      // 本机端口模式：只认本机地址，挡住 DNS 重绑定
+      if (!hostOk(req)) return fail(res, 403, '只允许在本机打开')
 
       // 写操作必须带自定义请求头（浏览器跨站请求无法添加，起到防伪造作用）
       if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-beike'] !== '1') return fail(res, 403, '请求来源无效')

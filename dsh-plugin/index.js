@@ -10,7 +10,6 @@ import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { homedir } from 'node:os'
 import { isAbsolute, join, resolve, basename, dirname } from 'node:path'
-import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import Schema from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -26,7 +25,7 @@ export const inject = ['tools']
 export const Config = Schema.object({
   dataDir: Schema.string().description('课件和资料的保存位置，默认在用户主目录下的「备课工作台」文件夹。'),
   webPath: Schema.string().default('/beike').description('在 DSH 网页界面中的访问路径。'),
-  standalonePort: Schema.number().default(0).description('命令行模式下独立网页使用的本机端口，0 表示自动选择空闲端口。'),
+  localPort: Schema.number().default(38127).description('本机网页端口（桌面版 DeepSeek Harness 的侧边栏和命令行模式使用）。改了这里，侧边栏会找不到工作台，一般不用改。'),
 })
 
 const SKILL_FILE = fileURLToPath(new URL('./skills/beike/SKILL.md', import.meta.url))
@@ -42,7 +41,7 @@ export function apply(ctx, config) {
   let wd = null          // 会话工作目录服务（有则用它解析相对路径）
   let reject = null      // DSH 网页的访问控制
   let webOrigin = null   // DSH 网页地址（挂载成功后有值）
-  let standalone = null  // 命令行模式下按需启动的独立网页
+  let local = null       // 本机网页（桌面版侧边栏 / 命令行模式使用）
 
   ctx.inject(['workingDirectory'], (c) => { c.effect(() => { wd = c.workingDirectory; return () => { wd = null } }, 'beike: working directory') })
   ctx.inject(['connection'], (c) => {
@@ -70,24 +69,44 @@ export function apply(ctx, config) {
       return c.skills.register({ name: 'beike', description, content: raw.slice(m ? m[0].length : 0).trim(), source: 'bundled', path: SKILL_FILE })
     }, 'beike: skill')
   })
-  ctx.effect(() => () => { standalone?.server.close(); standalone = null }, 'beike: standalone server')
+  // 本机网页：桌面版的界面从本地文件加载，侧边栏通过 http://127.0.0.1:端口/beike/ 嵌入工作台
+  let disposed = false
+  const localUrl = () => (local ? `http://127.0.0.1:${local.port}${base}/` : null)
+  async function startLocal() {
+    const handler = createHandler({ store, base, localPort: () => local?.port, logger: ctx.logger })
+    const listen = port => new Promise((ok, fail) => {
+      const server = createServer((req, res) => { ready.then(() => handler(req, res)) })
+      server.once('error', fail)
+      server.listen(port, '127.0.0.1', () => ok(server))
+    })
+    let server, err
+    // 插件重载时旧服务可能还没完全关闭，稍等重试几次
+    for (let i = 0; i < 6 && !server; i++) {
+      try { server = await listen(config.localPort ?? 38127) } catch (e) { err = e; await new Promise(r => setTimeout(r, 400)) }
+    }
+    if (!server) { const e = err;
+      ctx.logger.warn(`beike: 本机端口 ${config.localPort ?? 38127} 被占用（${e?.code || e}），改用随机端口；桌面版侧边栏将无法嵌入，可用 beike_open 给出的链接打开`)
+      server = await listen(0)
+    }
+    if (disposed) { server.close(); return }
+    local = { server, port: server.address().port }
+    ctx.logger.info(`beike: 备课工作台本机网页 ${localUrl()}`)
+  }
+  const localReady = startLocal().catch(e => ctx.logger.warn(`beike: 本机网页启动失败：${e?.message || e}`))
+  ctx.effect(() => () => { disposed = true; local?.server.close(); local?.server.closeAllConnections?.(); local = null }, 'beike: local server')
 
   async function cwdOf(exec) {
     try { if (wd && exec?.agent) return await wd.ensure(exec.agent, exec.signal) } catch { /* 用进程目录 */ }
     return process.cwd()
   }
   async function lesson(id) { await ready; return store.get(String(id || '').trim()) }
-  async function openUrl() {
-    if (webOrigin) return webOrigin.replace(/\/$/, '') + base + '/'
-    if (!standalone) {
-      const token = randomBytes(16).toString('hex')
-      const handler = createHandler({ store, base, token, logger: ctx.logger })
-      const server = createServer((req, res) => handler(req, res))
-      await new Promise((ok, fail) => { server.once('error', fail); server.listen(config.standalonePort || 0, '127.0.0.1', ok) })
-      standalone = { server, token, port: server.address().port }
-      ctx.logger.info(`beike: 备课工作台网页 http://127.0.0.1:${standalone.port}${base}/`)
-    }
-    return `http://127.0.0.1:${standalone.port}${base}/?t=${standalone.token}`
+  /** 可用的网页地址：本机地址（任何模式都能用）+ DSH 网页地址（网页版才有） */
+  async function openUrls() {
+    await localReady
+    const urls = []
+    if (localUrl()) urls.push(localUrl())
+    if (webOrigin) urls.push(webOrigin.replace(/\/$/, '') + base + '/')
+    return [...new Set(urls)]
   }
   const summary = (l) => {
     const p = pace(l.slides)
@@ -319,12 +338,13 @@ export function apply(ctx, config) {
     output: out,
     async execute(args) {
       await ready
-      const url = await openUrl()
-      let t = `备课工作台：${url}`
+      const urls = await openUrls()
+      if (!urls.length) return `备课工作台网页没有启动成功，请查看 DeepSeek Harness 日志。课件和资料保存在：${store.dir}`
+      let t = `备课工作台：${urls[0]}` + (urls[1] ? `\n（在 DeepSeek Harness 网页版里也可用：${urls[1]}）` : '')
+      t += '\n也可以直接点 DeepSeek Harness 左侧边栏的「备课工作台」，或在右侧边栏新建标签选「备课工作台」。'
       if (args.lesson_id) {
         const l = await lesson(args.lesson_id)
-        const root = url.replace(/\/(\?.*)?$/, '')
-        t += `\n上课放映：${root}/present/${l.id}${standalone && !webOrigin ? '?t=' + standalone.token : ''}`
+        t += `\n上课放映：${urls[0]}present/${l.id}`
         t += `\n（打开工作台后在左侧选《${l.title}》）`
       }
       return t + `\n课件和资料保存在：${store.dir}`

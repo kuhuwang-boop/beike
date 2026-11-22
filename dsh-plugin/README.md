@@ -44,7 +44,7 @@
 
 ```bash
 # 1) 用安装包（.tgz）
-dsh plugin --profile web add ./dsh-beike-1.1.0.tgz
+dsh plugin --profile web add ./dsh-beike-1.2.0.tgz
 
 # 2) 用解压后的文件夹（方便自己改代码；先在文件夹里执行一次 npm install）
 dsh plugin --profile web add ./dsh-beike
@@ -53,7 +53,7 @@ dsh plugin --profile web add ./dsh-beike
 dsh plugin --profile web add github:你的账号/dsh-beike
 ```
 
-> 没有全局安装 `dsh` 时，在命令前加 `npx @deepseek-ai/dsh`，例如 `npx @deepseek-ai/dsh plugin --profile web add ./dsh-beike-1.1.0.tgz`。
+> 没有全局安装 `dsh` 时，在命令前加 `npx @deepseek-ai/dsh`，例如 `npx @deepseek-ai/dsh plugin --profile web add ./dsh-beike-1.2.0.tgz`。
 
 确认已装上：
 
@@ -72,11 +72,13 @@ dsh web
 - **左侧边栏**：「备课工作台」入口（在 Plugins、Automation tasks 下面）。点开就在主区域显示完整的工作台。
 - **右侧边栏**：在任意对话里打开右侧栏，点「+」新建标签，选「备课工作台」。一边和 AI 对话，一边看课件；AI 新建或修改了哪节课，右侧会自动切过去。
 
-工作台也可以单独打开：**http://127.0.0.1:3080/beike/**（需要先通过 `dsh web` 打印的链接登录一次）。
+工作台也可以单独打开：**http://127.0.0.1:38127/beike/**（插件在本机开的网页，只允许本机访问）。
+
+**桌面版 DeepSeek Harness**（Windows / macOS 安装版）同样适用：用下面的命令装进你正在使用的配置后，**完全退出再重新打开** DeepSeek Harness，左侧边栏就会出现「备课工作台」。Windows 用户可以直接双击仓库里的 `安装备课插件到DeepSeek.bat`，它会把插件装进本机所有 DeepSeek Harness 配置。
 
 卸载：`dsh plugin --profile web remove dsh-beike`（课件和资料会保留在数据目录里）。
 
-**命令行模式**（`dsh tui` 等没有网页界面的配置）也能用：同样用 `dsh plugin --profile <配置名> add ...` 安装；调用 `beike_open` 时插件会在本机临时开一个网页，链接里带访问口令，只有拿到链接的人能打开。
+**命令行模式**（`dsh tui` 等没有网页界面的配置）也能用：同样用 `dsh plugin --profile <配置名> add ...` 安装；调用 `beike_open` 会给出本机网页地址。
 
 ## 怎么用
 
@@ -101,14 +103,14 @@ AI 做完会给你工作台链接。在网页里看效果、自己改几处、�
       config:
         dataDir: D:/备课数据      # 课件和资料保存位置，默认：用户主目录/备课工作台
         webPath: /beike           # 网页路径
-        standalonePort: 0         # 命令行模式下独立网页的端口，0 = 自动
+        localPort: 38127          # 本机网页端口（桌面版侧边栏使用，一般不用改）
 ```
 
 ## 数据与隐私
 
 - 每节课一个文件夹：`<数据目录>/lessons/<课次编号>/`，里面是 `lesson.json`（课件、教学设计）、`materials/`（资料提取出的文字）、`images/`（配图）。可以直接备份或拷贝到另一台电脑。
 - 插件本身不联网、不上传任何内容。AI 读取的资料和生成的内容，只经过你在 DeepSeek Harness 里配置的模型服务。
-- 网页沿用 DeepSeek Harness 的登录保护；所有修改请求都需要自定义请求头，其他网站无法伪造。
+- 网页版沿用 DeepSeek Harness 的登录保护；本机网页只监听 127.0.0.1、只接受本机地址访问；所有修改请求都需要自定义请求头，其他网站无法伪造。
 
 ## 开发
 
