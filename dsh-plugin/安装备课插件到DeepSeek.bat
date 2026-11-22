@@ -28,14 +28,26 @@ set "PROFILES=%USERPROFILE%\.dsh\profiles"
 set FOUND=0
 if exist "%PROFILES%" (
   for /d %%P in ("%PROFILES%\*") do (
-    set FOUND=1
-    echo.
-    echo ==== 安装到配置：%%~nxP ====
-    call %DSH% plugin --profile %%~nxP remove dsh-beike >nul 2>nul
-    call %DSH% plugin --profile %%~nxP add "%PKG%"
-    if errorlevel 1 (echo [失败] 配置 %%~nxP 安装失败) else (echo [完成] 已装进配置 %%~nxP)
+    rem 跳过不是配置的文件夹（node_modules、以点开头的缓存目录）
+    set "PN=%%~nxP"
+    set "SKIP=0"
+    if /i "!PN!"=="node_modules" set "SKIP=1"
+    if "!PN:~0,1!"=="." set "SKIP=1"
+    if "!SKIP!"=="0" call :install "!PN!"
   )
 )
+goto :after
+
+:install
+    set FOUND=1
+    echo.
+    echo ==== 安装到配置：%~1 ====
+    call %DSH% plugin --profile %~1 remove dsh-beike >nul 2>nul
+    call %DSH% plugin --profile %~1 add "%PKG%"
+    if errorlevel 1 (echo [失败] 配置 %~1 安装失败，多半是网络中断，可以再运行一次本脚本) else (echo [完成] 已装进配置 %~1)
+    goto :eof
+
+:after
 if "!FOUND!"=="0" (
   echo.
   echo ==== 没有找到已有配置，安装到 web 配置 ====
