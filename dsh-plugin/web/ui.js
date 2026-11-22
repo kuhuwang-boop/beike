@@ -1,7 +1,11 @@
 /* 备课工作台（DSH 插件版）前端公共函数：主题、图标、对话框、提示、接口调用 */
+var EMBED = (function () { try { return new URLSearchParams(location.search).get('embed') || ''; } catch (e) { return ''; } })();
 (function () {
   var t = null;
-  try { t = localStorage.getItem('beike-theme'); } catch (e) {}
+  // 嵌在 DeepSeek Harness 侧边栏里时，跟随 DSH 的主题
+  try { var q = new URLSearchParams(location.search).get('theme'); if (q === 'dark' || q === 'light') t = q; } catch (e) {}
+  if (EMBED) document.documentElement.classList.add('bk-embed', 'bk-embed-' + EMBED);
+  try { if (!t) t = localStorage.getItem('beike-theme'); } catch (e) {}
   if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', t);
 })();

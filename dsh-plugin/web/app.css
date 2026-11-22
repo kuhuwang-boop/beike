@@ -142,3 +142,10 @@ body.bk{margin:0;background:var(--bg);color:var(--ink);font-size:14px}
 }
 @media (max-width:520px){ .bk-acts .btn.ghost span{display:none} }
 .bk-file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}.bk-drop{position:relative}.bk-drop:focus-within{border-color:var(--brand)}
+
+/* 嵌在 DeepSeek Harness 里 */
+.bk-embed body.bk,.bk-embed .bk-app{background:transparent}
+.bk-embed .bk-side-foot{display:none}
+.bk-embed-side .bk-main{padding:10px 12px 30px}
+.bk-embed-side .bk-welcome h1{font-size:22px}
+[hidden]{display:none!important}

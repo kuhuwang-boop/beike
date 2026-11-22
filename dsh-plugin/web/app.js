@@ -269,7 +269,14 @@
       if (!force && j.version === S.version) return;
       // 编辑窗口打开时不打断老师：先不记下新版本号，关闭后下一次轮询再刷新
       if (!force && document.querySelector('.ui-modal')) return;
+      var prevTop = S.top;
       S.version = j.version; S.lessons = j.lessons; renderSide();
+      // 在 DSH 右侧栏里：跟着 AI 走——AI 刚新建或修改的课次自动切换过来
+      var top = j.lessons[0];
+      S.top = top ? top.id + '@' + top.updatedAt : '';
+      if (window.EMBED === 'side' && top && prevTop !== undefined && S.top !== prevTop && (!S.L || S.L.id !== top.id) && Date.now() - S.selfAt > 4000) {
+        toast('AI 正在修改《' + top.title + '》，已切换过来'); BK.open(top.id); return;
+      }
       if (S.L) {
         var me = j.lessons.filter(function (l) { return l.id === S.L.id; })[0];
         if (!me) { S.L = null; renderWelcome(); return; }
@@ -375,7 +382,8 @@
   poll(true).then(function () {
     var last = store.get('last', '');
     S.tab = store.get('tab', 'deck');
-    if (last && S.lessons.some(function (l) { return l.id === last; })) BK.open(last);
+    if (window.EMBED === 'side' && S.lessons.length) BK.open(S.lessons[0].id);
+    else if (last && S.lessons.some(function (l) { return l.id === last; })) BK.open(last);
     else if (S.lessons.length && innerWidth > 900) BK.open(S.lessons[0].id);
     else renderWelcome();
   });

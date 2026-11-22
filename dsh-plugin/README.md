@@ -24,7 +24,7 @@
 
 **一份备课技能 `beike`**：把“课件团队”的做法写成步骤和规则——共同原则（以资料为准、不编造）、教学设计、课件版式、13 种结构图选型、课堂提问、讲稿写法、质量督导与出处核对。AI 遇到备课任务时自动加载。
 
-**备课工作台网页**
+**备课工作台网页**（放在 DeepSeek Harness 的左侧边栏和右侧边栏里）
 
 - 课次列表（按课程分组、可搜索），新建、删除
 - 课件预览与逐页编辑：改文字、新增 / 删除 / 调整顺序、上传配图、撤销
@@ -44,16 +44,16 @@
 
 ```bash
 # 1) 用安装包（.tgz）
-dsh plugin --profile web add ./dsh-beike-1.0.0.tgz
+dsh plugin --profile web add ./dsh-beike-1.1.0.tgz
 
-# 2) 用解压后的文件夹（方便自己改代码）
+# 2) 用解压后的文件夹（方便自己改代码；先在文件夹里执行一次 npm install）
 dsh plugin --profile web add ./dsh-beike
 
 # 3) 从 GitHub 安装（仓库地址换成你实际存放插件的仓库）
 dsh plugin --profile web add github:你的账号/dsh-beike
 ```
 
-> 没有全局安装 `dsh` 时，在命令前加 `npx @deepseek-ai/dsh`，例如 `npx @deepseek-ai/dsh plugin --profile web add ./dsh-beike-1.0.0.tgz`。
+> 没有全局安装 `dsh` 时，在命令前加 `npx @deepseek-ai/dsh`，例如 `npx @deepseek-ai/dsh plugin --profile web add ./dsh-beike-1.1.0.tgz`。
 
 确认已装上：
 
@@ -67,7 +67,12 @@ dsh --profile web --dump-config | grep -A3 "dsh-beike"
 dsh web
 ```
 
-浏览器会打开 DeepSeek Harness。备课工作台在同一个地址下：**http://127.0.0.1:3080/beike/**（需要先通过 `dsh web` 打印的链接登录一次）。也可以在对话里说“打开备课工作台”，AI 会给你链接。
+浏览器会打开 DeepSeek Harness，备课工作台已经放进侧边栏：
+
+- **左侧边栏**：「备课工作台」入口（在 Plugins、Automation tasks 下面）。点开就在主区域显示完整的工作台。
+- **右侧边栏**：在任意对话里打开右侧栏，点「+」新建标签，选「备课工作台」。一边和 AI 对话，一边看课件；AI 新建或修改了哪节课，右侧会自动切过去。
+
+工作台也可以单独打开：**http://127.0.0.1:3080/beike/**（需要先通过 `dsh web` 打印的链接登录一次）。
 
 卸载：`dsh plugin --profile web remove dsh-beike`（课件和资料会保留在数据目录里）。
 
@@ -113,7 +118,7 @@ dsh plugin --profile web add ./        # 以链接方式安装，改代码后重
 npm pack                               # 打包成 dsh-beike-<版本>.tgz 分发
 ```
 
-目录：`index.js`（插件入口：工具、技能、网页挂载）、`lib/`（课件规则、存储、资料提取、PPT 导出、网页接口）、`web/`（工作台网页与渲染内核）、`skills/beike/SKILL.md`（备课技能）。
+目录：`index.js`（插件入口：工具、技能、网页挂载）、`lib/client.js`（浏览器端：左侧边栏入口、右侧边栏标签页）、`lib/`（课件规则、存储、资料提取、PPT 导出、网页接口）、`web/`（工作台网页与渲染内核）、`skills/beike/SKILL.md`（备课技能）。
 
 渲染内核（`web/deckkit.js`、`web/diagram.js`）与网页版备课工作台共用；结构图版式目录改编自 pptx-compose-skill（MIT）。
 
