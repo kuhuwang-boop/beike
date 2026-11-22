@@ -1,0 +1,6 @@
+# 备课工作台插件：按需修改 config 即可（也可以留空使用默认值）
+- insert:
+    - id: beike
+      name: dsh-beike
+      config:
+        webPath: /beike

@@ -1,0 +1,26 @@
+{
+  "name": "dsh-beike",
+  "version": "1.0.0",
+  "description": "备课工作台：DeepSeek Harness 插件。让 AI 像一支课件团队那样，把高校老师的讲义、教材、旧课件做成课件、讲稿、课堂提问和教学设计；逐条核对出处，浏览器直接上课，导出 PPT。",
+  "keywords": ["dsh-plugin", "deepseek-harness", "备课", "课件", "PPT", "教学设计", "education"],
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "files": ["index.js", "lib/", "web/", "skills/", "cordis.patch.yml", "README.md", "LICENSE"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "engines": { "node": ">=20", "dsh": ">=0.2.0 <0.4.0" },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "pptxgenjs": "^3.12.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.0",
+    "@deepseek-ai/dsh-tools": ">=0.0.1-rc.1",
+    "@deepseek-ai/schemastery": "^3.19.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.1.0",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.5",
+    "@deepseek-ai/schemastery": "^3.19.0"
+  }
+}

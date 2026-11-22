@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>__TITLE__ · 上课</title>
+<link rel="stylesheet" href="__BASE__/assets/base.css">
+<link rel="stylesheet" href="__BASE__/assets/present.css">
+<script>window.BEIKE_BASE = "__BASE__";</script>
+<script src="__BASE__/assets/ui.js"></script>
+</head>
+<body class="pr-body">
+<!-- 放映视图（投影屏幕） -->
+<div class="pr-screen" id="screen">
+  <div class="pr-stage"><div class="slide-preview pr-slide" id="cur"></div><div class="pr-ans" id="ans" hidden></div></div>
+  <div class="pr-black" id="black" hidden></div>
+  <div class="pr-bar" id="bar">
+    <a class="pr-b" href="__BASE__/" title="回到课件工作室"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-chevron-left"></use></svg></a>
+    <button class="pr-b" onclick="Pr.go(-1)" title="上一页（←）"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-arrow-left"></use></svg></button>
+    <span class="pr-pg" id="pg"></span>
+    <button class="pr-b" onclick="Pr.go(1)" title="下一页（→ 或空格）"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-arrow-right"></use></svg></button>
+    <button class="pr-b" id="b-ans" onclick="Pr.answer()" title="显示答案（A）" hidden><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-bulb"></use></svg></button>
+    <button class="pr-b" onclick="Pr.mode('presenter')" title="演讲者视图（P）：讲稿、计时、下一页"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-notes"></use></svg></button>
+    <button class="pr-b" onclick="Pr.full()" title="全屏（F）"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-maximize"></use></svg></button>
+    <button class="pr-b" onclick="Pr.help()" title="快捷键（?）">?</button>
+  </div>
+</div>
+
+<!-- 演讲者视图（老师自己的电脑） -->
+<div class="pr-pres" id="pres" hidden>
+  <header class="pp-top">
+    <a class="btn ghost sm" href="__BASE__/"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-chevron-left"></use></svg>工作室</a>
+    <b class="pp-title">__TITLE__</b>
+    <div class="pp-clock"><span id="t-el">00:00</span><small>已用时 / 课时 <span id="p-mins"></span> 分钟</small></div>
+    <div class="pp-pace" id="pace"></div>
+    <div class="pp-act">
+      <button class="btn ghost sm" onclick="Pr.timer()" id="b-timer"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-player-pause"></use></svg>暂停计时</button>
+      <button class="btn ghost sm" onclick="Pr.resetTimer()">重新计时</button>
+      <button class="btn primary sm" onclick="Pr.screen()"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-device-desktop"></use></svg>打开投影窗口</button>
+      <button class="btn ghost sm" onclick="Pr.mode('screen')">只放映</button>
+    </div>
+  </header>
+  <div class="pp-main">
+    <section class="pp-cur">
+      <div class="slide-preview" id="p-cur"></div>
+      <div class="pp-nav">
+        <button class="btn sm" onclick="Pr.go(-1)"><svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-arrow-left"></use></svg>上一页</button>
+        <span id="p-pg"></span>
+        <button class="btn primary sm" onclick="Pr.go(1)">下一页<svg class="ico" aria-hidden="true"><use href="__BASE__/assets/vendor/icons.svg#i-arrow-right"></use></svg></button>
+        <button class="btn ghost sm" onclick="Pr.black()" title="B">黑屏</button>
+        <button class="btn ghost sm" id="p-ans-b" onclick="Pr.answer()" hidden>在屏幕上显示答案</button>
+      </div>
+    </section>
+    <aside class="pp-side">
+      <div class="pp-next"><small>下一页</small><div class="slide-preview" id="p-next"></div></div>
+      <div class="pp-notes"><div class="pp-nh"><b>讲稿</b><span class="muted small" id="p-min"></span><span class="pp-fs"><button onclick="Pr.font(-1)">A-</button><button onclick="Pr.font(1)">A+</button></span></div><div id="p-notes"></div></div>
+    </aside>
+  </div>
+  <div class="pp-strip" id="p-strip"></div>
+</div>
+
+<script>window.PRESENT = __DATA__;</script>
+<script src="__BASE__/assets/diagram.js"></script>
+<script src="__BASE__/assets/deckkit.js"></script>
+<script>document.getElementById("p-mins").textContent = window.PRESENT.minutes;</script>
+<script src="__BASE__/assets/present.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>备课工作台</title>
+<link rel="stylesheet" href="__BASE__/assets/base.css">
+<link rel="stylesheet" href="__BASE__/assets/app.css">
+<script>window.BEIKE_BASE = "__BASE__";</script>
+<script src="__BASE__/assets/ui.js"></script>
+</head>
+<body class="bk">
+<div class="bk-app" id="app">
+  <aside class="bk-side" id="side">
+    <div class="bk-brand">
+      <span class="bk-mark">备</span>
+      <div><b>备课工作台</b><small>DeepSeek Harness 插件</small></div>
+      <button class="bk-ib" onclick="toggleTheme()" title="切换夜间模式"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-moon"></use></svg></button>
+    </div>
+    <button class="btn primary bk-new" onclick="BK.newLesson()"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-plus"></use></svg>新建课次</button>
+    <input class="bk-search" id="q" placeholder="搜索课次或课程" oninput="BK.renderSide()">
+    <div class="bk-list" id="list"></div>
+    <div class="bk-side-foot muted small">在 DSH 对话里说“用备课工作台……”，AI 会把课件做进这里</div>
+  </aside>
+  <div class="bk-mask" onclick="BK.side(false)"></div>
+  <main class="bk-main" id="main"></main>
+</div>
+<script src="__BASE__/assets/diagram.js"></script>
+<script src="__BASE__/assets/deckkit.js"></script>
+<script src="__BASE__/assets/app.js"></script>
+</body>
+</html>

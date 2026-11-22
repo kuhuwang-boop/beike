@@ -1,0 +1,58 @@
+/* 上课模式 */
+.pr-body{margin:0;background:#0d0f10;color:#e8ecee;overflow:hidden;height:100vh;height:100dvh}
+.pr-screen[hidden],.pr-pres[hidden],.pr-black[hidden],.pr-ans[hidden]{display:none!important}
+.pr-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
+.pr-stage{position:relative;width:min(100vw,calc(100vh * 16 / 9));width:min(100vw,calc(100dvh * 16 / 9))}
+.pr-slide{width:100%;border-radius:0;box-shadow:none}
+.pr-black{position:fixed;inset:0;background:#000;z-index:5}
+.pr-ans{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);max-width:80%;background:rgba(20,24,26,.92);color:#fff;border-radius:1.2vw;padding:1.2vw 2.2vw;font-size:clamp(14px,1.9vw,30px);line-height:1.5;box-shadow:0 10px 40px rgba(0,0,0,.4);z-index:3}
+.pr-ans b{display:inline-block;background:#3f9b6f;border-radius:.5em;padding:0 .5em;margin-right:.6em;font-size:.8em;vertical-align:.1em}
+.sp .opt.pr-right{outline:.35cqw solid #3f9b6f;outline-offset:-.35cqw;font-weight:700}
+.sp .opt.pr-right:after{content:" ✓";color:#3f9b6f}
+.pr-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:999px;background:rgba(28,32,34,.82);backdrop-filter:blur(8px);z-index:10;transition:opacity .25s}
+body.idle .pr-bar{opacity:0;pointer-events:none}
+.follower .pr-bar{display:none}
+.pr-b{display:grid;place-items:center;min-width:38px;height:38px;border:0;border-radius:999px;background:transparent;color:#e8ecee;font:inherit;font-size:16px;cursor:pointer;text-decoration:none}
+.pr-b:hover{background:rgba(255,255,255,.12)}
+.pr-b .ico{width:20px;height:20px}
+.pr-pg{min-width:64px;text-align:center;font-size:14px;font-variant-numeric:tabular-nums;color:#c9d1d4}
+.pr-screen video.sp-vid{pointer-events:auto}
+
+/* 演讲者视图 */
+body.is-pres{background:var(--bg);color:var(--ink);overflow:auto}
+.pr-pres{min-height:100vh;display:flex;flex-direction:column}
+.pp-top{display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.pp-title{font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:26vw}
+.pp-clock{display:flex;flex-direction:column;line-height:1.1}
+.pp-clock span{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.pp-clock span.over{color:#c2503b}
+.pp-clock small,.pp-pace small{font-size:12px;color:var(--muted)}
+.pp-pace{display:flex;flex-direction:column;font-size:15px}
+.pp-pace .ok{color:#2f7d58}.pp-pace .slow{color:#c2503b}.pp-pace .fast{color:#b7791f}
+.pp-act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.pp-main{flex:1;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:16px;padding:16px 18px;min-height:0}
+.pp-cur .slide-preview{box-shadow:0 6px 30px rgba(var(--shadow-rgb),.18)}
+.pp-nav{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.pp-nav span{font-size:14px;color:var(--ink2);margin-right:auto}
+.pp-side{display:flex;flex-direction:column;gap:12px;min-height:0}
+.pp-next small{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.pp-next .slide-preview{width:62%;opacity:.92}
+.pp-end{position:absolute;inset:0;display:grid;place-items:center;background:var(--soft);color:var(--muted);font-size:14px}
+.pp-notes{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px;overflow:auto;min-height:220px}
+.pp-nh{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.pp-fs{margin-left:auto;display:flex;gap:4px}
+.pp-fs button{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:2px 8px;cursor:pointer;font-size:12px}
+#p-notes{line-height:1.75;color:var(--ink)}
+.pp-a{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(63,155,111,.12)}
+.pp-a b{color:#2f7d58;margin-right:8px}
+.pp-v{margin-top:12px}
+.pp-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 18px 14px}
+.ps{flex:none;width:120px;border:2px solid transparent;border-radius:10px;padding:3px;background:none;cursor:pointer;color:var(--muted);font-size:11px}
+.ps.on{border-color:var(--brand)}
+.ps .slide-preview{box-shadow:none;border-radius:6px}
+@media (max-width:900px){
+  .pp-main{grid-template-columns:1fr}
+  .pp-next .slide-preview{width:45%}
+  .pp-title{max-width:60vw}
+  .pp-act{margin-left:0}
+}
