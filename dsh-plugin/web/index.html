@@ -20,13 +20,21 @@
     <button class="btn primary bk-new" onclick="BK.newLesson()"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-plus"></use></svg>新建课次</button>
     <input class="bk-search" id="q" placeholder="搜索课次或课程" oninput="BK.renderSide()">
     <div class="bk-list" id="list"></div>
-    <div class="bk-side-foot muted small">在 DSH 对话里说“用备课工作台……”，AI 会把课件做进这里</div>
+    <nav class="bk-nav">
+      <button data-page="library" onclick="BK.page('library')"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-books"></use></svg>我的资料库</button>
+      <button data-page="style" onclick="BK.page('style')"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-adjustments-horizontal"></use></svg>我的备课风格</button>
+      <button data-page="brand" onclick="BK.page('brand')"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-school"></use></svg>学校模板与校徽</button>
+      <button data-page="settings" onclick="BK.page('settings')"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-settings"></use></svg>设置</button>
+    </nav>
   </aside>
   <div class="bk-mask" onclick="BK.side(false)"></div>
   <main class="bk-main" id="main"></main>
 </div>
 <script src="__BASE__/assets/diagram.js"></script>
 <script src="__BASE__/assets/deckkit.js"></script>
+<script src="__BASE__/assets/vendor/jszip.min.js"></script>
+<script src="__BASE__/assets/template.js"></script>
+<script src="__BASE__/assets/more.js"></script>
 <script src="__BASE__/assets/app.js"></script>
 </body>
 </html>

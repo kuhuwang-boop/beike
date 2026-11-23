@@ -17,7 +17,14 @@ function loadKit() {
   if (kit) return kit
   const box = { console, setTimeout, clearTimeout, Promise, location: { origin: '' }, captured: null }
   box.window = box
-  box.document = { createElement: () => ({ getContext: () => null }) }
+  // 视频封面需要真浏览器截图；在 Node 里让 <video> 立即报错，跳过封面（PPT 里仍可播放）
+  box.document = {
+    createElement: () => {
+      const el = { getContext: () => null, removeAttribute() {} }
+      Object.defineProperty(el, 'src', { set() { setTimeout(() => el.onerror && el.onerror(), 0) }, get() { return '' } })
+      return el
+    },
+  }
   // 拦截 writeFile：不写到当前目录，而是交回 Buffer 由调用方决定保存位置
   box.PptxGenJS = class extends PptxGenJS {
     writeFile(opt) {
@@ -42,15 +49,27 @@ export function themes() {
 
 /**
  * @param {object} lesson 课次（slides 已清洗）
- * @param {(file:string)=>string} imagePath 图片文件名 → 本机绝对路径
+ * @param {object} o
+ * @param {(file:string)=>string} o.image 配图文件名 → 本机绝对路径
+ * @param {(file:string)=>string} [o.video] 视频文件名 → 本机绝对路径
+ * @param {object} [o.brand] 学校名称与标志（图片地址已是本机路径）
+ * @param {object[]} [o.templates] 学校模板（图片地址已是本机路径）
  * @returns {Promise<Buffer>}
  */
-export async function exportPptx(lesson, imagePath) {
+export async function exportPptx(lesson, o) {
+  if (typeof o === 'function') o = { image: o }
   const k = loadKit()
-  const slides = lesson.slides.map(s => ({ ...s, image: s.image ? { ...s.image, src: imagePath(s.image.file) } : null }))
+  const slides = lesson.slides.map(s => ({
+    ...s,
+    image: s.image ? { ...s.image, src: o.image(s.image.file) } : null,
+    ...(s.video ? { video: { ...s.video, src: s.video.file && o.video ? o.video(s.video.file) : '' } } : {}),
+  }))
   k.captured = null
+  if (o.templates?.length) k.DeckKit.addTemplates(JSON.parse(JSON.stringify(o.templates)))
+  k.DeckKit.setBrand(o.brand || null)
+  const theme = /^tpl:/.test(lesson.theme) && !(o.templates || []).some(t => 'tpl:' + t.id === lesson.theme) ? 'blue' : (lesson.theme || 'blue')
+  await k.DeckKit.exportPptx(slides, theme, lesson.course || '', lesson.title || '课件')
   k.DeckKit.setBrand(null)
-  await k.DeckKit.exportPptx(slides, lesson.theme || 'blue', lesson.course || '', lesson.title || '课件')
   if (!k.captured) throw new Error('PPT 导出失败')
   return k.captured
 }

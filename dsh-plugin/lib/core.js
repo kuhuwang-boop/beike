@@ -4,8 +4,8 @@
  * 全部是纯函数，不依赖 DSH，方便单独测试。
  */
 
-export const LAYOUTS = ['title', 'objectives', 'bullets', 'two', 'diagram', 'quiz', 'section', 'summary']
-export const LAYOUT_NAMES = { title: '封面', objectives: '学习目标', bullets: '要点', two: '左右对比', diagram: '结构图', quiz: '课堂提问', section: '章节过渡', summary: '小结' }
+export const LAYOUTS = ['title', 'objectives', 'bullets', 'two', 'diagram', 'quiz', 'section', 'summary', 'video']
+export const LAYOUT_NAMES = { title: '封面', objectives: '学习目标', bullets: '要点', two: '左右对比', diagram: '结构图', quiz: '课堂提问', section: '章节过渡', summary: '小结', video: '教学视频' }
 export const PHASES = { B: '导入 Bridge-in', O: '目标 Objective', P1: '前测 Pre-assessment', P2: '参与式学习 Participatory', P3: '后测 Post-assessment', S: '总结 Summary' }
 
 /** 结构图版式：名称、适用场景、条目数范围 */
@@ -62,12 +62,27 @@ export function cleanImage(img) {
   return { file, credit: str(img.credit, 200) }
 }
 
+/** 教学视频页：视频文件只接受本插件保存的文件名；生成中的任务保留任务号 */
+export function cleanVideo(v) {
+  if (!v || typeof v !== 'object') return null
+  const file = /^[\w-]{1,60}\.mp4$/.test(String(v.file || '')) ? String(v.file) : ''
+  const status = file ? 'succeeded' : (['queued', 'running', 'failed'].includes(v.status) ? v.status : 'failed')
+  const o = { status, kind: str(v.kind, 20), prompt: str(v.prompt, 1500), duration: Math.max(4, Math.min(15, Number(v.duration) || 6)) }
+  if (file) o.file = file
+  if (/^[\w-]{1,80}$/.test(String(v.task || ''))) o.task = String(v.task)
+  if (status === 'failed') o.error = str(v.error, 200) || '视频生成失败'
+  if (v.startedAt) o.startedAt = str(v.startedAt, 30)
+  return o
+}
+
 /** 清洗 AI 或老师提交的课件：版式白名单、字段长度、结构图条目数 */
 export function normalize(input) {
   const out = []
   for (const s of Array.isArray(input) ? input : []) {
     if (!s || typeof s !== 'object') continue
     let layout = LAYOUTS.includes(s.layout) ? s.layout : 'bullets'
+    const video = layout === 'video' ? cleanVideo(s.video) : null
+    if (layout === 'video' && !video) layout = 'bullets'
     const diagram = layout === 'diagram' ? cleanDiagram(s.diagram) : null
     if (layout === 'diagram' && !diagram) layout = 'bullets' // 结构图数据不完整时退回要点页
     const phase = String(s.phase || '').toUpperCase()
@@ -88,6 +103,7 @@ export function normalize(input) {
       image: cleanImage(s.image),
       lead: layout === 'diagram' ? str(s.lead, 60) : '',
       diagram,
+      ...(video ? { video } : {}),
     })
   }
   return out.slice(0, 60)

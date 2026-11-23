@@ -74,3 +74,15 @@ function api(path, opt) {
     });
   });
 }
+
+/** 全屏等待提示 */
+function busy(on, msg) {
+  var b = document.getElementById('busy');
+  if (!b) {
+    b = document.createElement('div'); b.id = 'busy'; b.className = 'busy'; b.hidden = true;
+    b.innerHTML = '<div class="busy-box"><div class="spin"></div><div id="busy-msg"></div></div>';
+    document.body.appendChild(b);
+  }
+  b.hidden = !on;
+  if (msg) document.getElementById('busy-msg').textContent = msg;
+}

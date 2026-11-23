@@ -1,6 +1,6 @@
 {
   "name": "dsh-beike",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "备课工作台：DeepSeek Harness 插件。让 AI 像一支课件团队那样，把高校老师的讲义、教材、旧课件做成课件、讲稿、课堂提问和教学设计；逐条核对出处，浏览器直接上课，导出 PPT。",
   "keywords": [
     "dsh-plugin",

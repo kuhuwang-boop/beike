@@ -45,7 +45,7 @@ export class Store {
       if (!ID.test(id)) continue
       try {
         const l = JSON.parse(await readFile(this.path(id, 'lesson.json'), 'utf8'))
-        out.push({ id, title: l.title, course: l.course, minutes: l.minutes, pages: (l.slides || []).length, materials: (l.materials || []).length, theme: l.theme, first: (l.slides || [])[0] || null, updatedAt: l.updatedAt })
+        out.push({ id, title: l.title, course: l.course, minutes: l.minutes, lessonType: l.lessonType || '', pages: (l.slides || []).length, materials: (l.materials || []).length, theme: l.theme, first: (l.slides || [])[0] || null, updatedAt: l.updatedAt })
       } catch { /* 损坏或写入中的文件跳过 */ }
     }
     return out.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
@@ -58,6 +58,9 @@ export class Store {
     l.slides = normalize(l.slides || [])
     l.materials ||= []
     l.plan ||= {}
+    l.methods ||= []
+    l.lessonType ||= ''
+    l.audience ||= ''
     return l
   }
 
@@ -67,14 +70,15 @@ export class Store {
     return l
   }
 
-  async create({ title, course, minutes, lessonType }) {
+  async create({ title, course, minutes, lessonType, theme, methods, audience }) {
     const id = Date.now().toString(36) + randomBytes(3).toString('hex')
     await mkdir(this.path(id, 'materials'), { recursive: true })
     await mkdir(this.path(id, 'images'), { recursive: true })
     const l = {
       id, title: String(title || '未命名课次').slice(0, 80), course: String(course || '我的课程').slice(0, 60),
       minutes: Math.max(10, Math.min(300, Number(minutes) || 45)), lessonType: String(lessonType || ''),
-      theme: 'blue', slides: [], materials: [], plan: {}, history: [], createdAt: new Date().toISOString(),
+      theme: theme || 'blue', methods: methods || [], audience: String(audience || '').slice(0, 200),
+      slides: [], materials: [], plan: {}, history: [], createdAt: new Date().toISOString(),
     }
     return this.save(l)
   }
@@ -93,6 +97,18 @@ export class Store {
     return this.save(l)
   }
 
+  /** 版本历史：最新在前 */
+  versions(l) {
+    return (l.history || []).map((v, i) => ({ i, at: v.at, note: v.note, pages: (v.slides || []).length })).reverse()
+  }
+
+  /** 回到某个历史版本（当前版本也会留进历史，可以再撤销） */
+  async restore(l, i) {
+    const v = (l.history || [])[i]
+    if (!v) throw new Error('没有这个版本')
+    return this.saveSlides(l, normalize(v.slides), `回到 ${v.at.slice(5, 16).replace('T', ' ')} 的版本（${v.note}）`)
+  }
+
   async undo(l) {
     const v = (l.history || []).pop()
     if (!v) throw new Error('没有可以撤销的版本')
@@ -108,6 +124,19 @@ export class Store {
     l.materials.push({ id: mid, name: String(name).slice(0, 120), chars: text.length, addedAt: new Date().toISOString() })
     await this.save(l)
     return mid
+  }
+
+  async updateMaterial(l, mid, { name, text }) {
+    const m = l.materials.find(x => x.id === mid)
+    if (!m) throw new Error('没有这份资料')
+    if (text !== undefined) {
+      const t = String(text).trim()
+      if (!t) throw new Error('资料不能为空')
+      await writeFile(this.path(l.id, 'materials', `${mid}.txt`), t)
+      m.chars = t.length
+    }
+    if (name !== undefined && String(name).trim()) m.name = String(name).trim().slice(0, 120)
+    await this.save(l)
   }
 
   async removeMaterial(l, mid) {
@@ -129,6 +158,13 @@ export class Store {
     const file = randomBytes(8).toString('hex') + '.' + ext
     await mkdir(this.path(l.id, 'images'), { recursive: true })
     await writeFile(this.path(l.id, 'images', file), buf)
+    return file
+  }
+
+  async saveVideo(l, buf, name) {
+    const file = String(name).replace(/[^\w-]/g, '').slice(0, 50) + '.mp4'
+    await mkdir(this.path(l.id, 'videos'), { recursive: true })
+    await writeFile(this.path(l.id, 'videos', file), buf)
     return file
   }
 

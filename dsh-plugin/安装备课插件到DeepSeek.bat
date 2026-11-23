@@ -4,9 +4,9 @@ setlocal EnableDelayedExpansion
 title 安装备课工作台插件到 DeepSeek Harness
 cd /d "%~dp0"
 
-set "PKG=%~dp0dsh-beike-1.2.0.tgz"
+set "PKG=%~dp0dsh-beike-1.3.0.tgz"
 if not exist "%PKG%" (
-  echo [错误] 没找到安装包 dsh-beike-1.2.0.tgz，请把它和本脚本放在同一个文件夹。
+  echo [错误] 没找到安装包 dsh-beike-1.3.0.tgz，请把它和本脚本放在同一个文件夹。
   goto :end
 )
 
