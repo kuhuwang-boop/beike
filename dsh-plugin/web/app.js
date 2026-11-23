@@ -57,7 +57,7 @@
       '<div class="bk-title"><input id="t-title" value="' + esc(L.title) + '" title="点击修改课题">' +
       '<div class="bk-meta"><input id="t-course" value="' + esc(L.course) + '" title="课程名称"> · <select id="t-min">' + mins.sort(function (a, b) { return a - b; }).map(function (m) { return '<option value="' + m + '"' + (m === L.minutes ? ' selected' : '') + '>' + m + ' 分钟</option>'; }).join('') + '</select>' +
       ' · <select id="t-type" title="课型">' + Object.keys(ME.types).map(function (k) { return '<option value="' + k + '"' + (k === (L.lessonType || 'new') ? ' selected' : '') + '>' + esc(ME.types[k][0]) + '</option>'; }).join('') + '</select>' +
-      ' · <span class="muted">编号 ' + L.id + '</span></div></div>' +
+      ' · <span class="muted">编号 ' + L.id + '</span>' + (L.courseRef ? ' · <a href="#" onclick="BK.course(\'' + L.courseRef.courseId + '\');return false">' + ico('target-arrow') + '所属课程教案</a>' : '') + '</div></div>' +
       '<div class="bk-acts">' +
       '<button class="btn ghost sm" onclick="BK.pickTheme()">' + ico('palette') + '<span>' + esc(BKX.themeName(L.theme)) + '</span></button>' +
       '<button class="btn ghost sm" onclick="BK.undo()"' + (L.versions ? '' : ' disabled') + ' title="撤销上一次修改">' + ico('arrow-back-up') + '<span>撤销</span></button>' +
@@ -415,8 +415,9 @@
     closeMore: function () { var p = $('more-pop'); if (p) p.hidden = true; },
     page: function (name) {
       BK.side(false); S.L = null; S.view = name; store.set('view', name); renderSide();
-      ({ library: BKX.libraryPage, style: BKX.stylePage, brand: BKX.brandPage, settings: BKX.settingsPage })[name]();
+      ({ courses: BKC.page, library: BKX.libraryPage, style: BKX.stylePage, brand: BKX.brandPage, settings: BKX.settingsPage })[name]();
     },
+    course: function (cid) { BK.side(false); S.L = null; S.view = 'courses'; store.set('view', 'courses'); renderSide(); BKC.open(cid, 'ses').then(BK.mark); },
     mark: function () { document.querySelectorAll('.bk-nav button').forEach(function (b) { b.classList.toggle('on', !S.L && b.dataset.page === S.view); }); },
     pickTheme: pickTheme,
     paste: function () {

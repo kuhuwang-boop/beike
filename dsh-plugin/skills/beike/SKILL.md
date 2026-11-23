@@ -43,6 +43,20 @@ description: 高校备课：把老师的讲义、教材、旧课件做成一节�
 - **教学方法**：`beike_profile action=methods` 列出方法库；老师选定后（`beike_set_lesson methods`，建议 1–4 种），必须落实到具体页面、讲稿和练习，交付时说明落实在哪几页。
 - **资料库**：老师说“用我以前的讲义”时，`beike_library action=suggest/list` 找，`action=attach` 加进课次再通读。
 
+## 课程与教案（逆向设计 / OBE）
+
+老师提到专业认证、课程目标、教学大纲、教学进度、教案（整门课）、题库、组卷、试卷、成绩分析、达成度、持续改进时，用这一套工具：
+
+1. `beike_course action=create`（教学大纲原文放进 `info.syllabus`），`action=syllabus` 分段读完大纲。
+2. **提取课程目标**：`beike_course_objectives`。2–6 条，“能够……”+ 可观测行为动词，布鲁姆层级 1–6，权重合计 100；每条 `evidence` 必须从大纲**逐字复制**（插件会核对，找不到会标出）。有毕业要求指标点就一并填、标 H/M/L。
+3. **教学进度**：`beike_course action=schedule`（开课日期、每周星期、次数、跳过的节假日）。
+4. **逐次教案**：`beike_session action=save`。选本次课覆盖的目标；BOPPPS 环节时长合计 = 课时；学生主动学习 ≥30%；单段讲授 ≤20 分钟；每个目标都有课堂检测（后测或检测方式）；应用及以上层级的目标必须有学生练习；写误区和思政。保存后看返回的检查结果，把 ✗ 和 ⚠ 改掉。需要课件时 `action=make_lesson`，再按标准流程做课件（备课须知里会带上本次课的目标和教案）。
+5. **题库**：`beike_question action=add`。按“目标 × 层级”补双向细目表的空格，题目层级不低于目标层级，选择题干扰项来自常见误区，附答案、解析、命题依据。
+6. **组卷**：`beike_paper action=create`（默认按目标权重自动组卷），`action=export` 导出 Word 试卷 / 答案。成绩由老师在工作台导入。
+7. **持续改进**：`beike_course action=report` 拿到达成度、试题分析、教学反思，**只依据这些数据**写改进建议，`action=save_improvement` 保存。
+
+“AI 督导评课”：读 `beike_session action=get` 的教案和检查结果，指出最需要改的 3–5 处并给出具体改法，老师同意后再保存。
+
 ## 教学视频（MiniMax 海螺 H3）
 
 老师要“视频”“动画”“短片”时，用 `beike_video action=create`：选类型（导入短片 / 原理演示 / 真实场景 / 故事情境），`prompt` 写具体画面（主体、动作、场景、镜头运动、光线），不要画面文字；4–15 秒。视频页插在指定页后面，生成需 1–5 分钟、完成后自动下载，可先做别的再 `action=status` 查看。讲稿里写好课堂用法（看前提问、看后讨论）。没有 MiniMax Key 时告诉老师在工作台左下角「设置」里填写。

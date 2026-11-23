@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises'
 import { Store } from './store.js'
 import { Profile, TYPES, typeText } from './profile.js'
 import { Library } from './library.js'
+import { Courses, BLOOM, PHASE } from './course.js'
 import { exportPptx, themes } from './export.js'
 import { planDocx } from './docx.js'
 import { normalize } from './core.js'
@@ -23,10 +24,12 @@ export class Service {
     this.store = new Store(dataDir)
     this.profile = new Profile(dataDir)
     this.library = new Library(dataDir)
+    this.courses = new Courses(dataDir)
     this.logger = logger
     const bump = () => { this.store.version++ }
     this.profile.onChange = bump
     this.library.onChange = bump
+    this.courses.onChange = bump
     this.timer = null
   }
 
@@ -85,11 +88,49 @@ export class Service {
     const tt = typeText(l.lessonType)
     if (tt) parts.push(tt)
     if (l.audience) parts.push(`【授课对象】${l.audience}（讲解深度、例子和练习难度都要与之匹配）`)
+    const cs = await this.courseSessionText(l)
+    if (cs) parts.push(cs)
     const ms = await this.profile.methodsFor(l.methods)
     if (ms.length) {
       parts.push('【本节课采用的教学方法——必须在课件、讲稿和练习里落实，并能指出落实在哪几页】\n' + ms.map(m => `◆ ${m.name}${m.mine ? '（老师自己的技能，优先遵守）' : ''}：${m.instructions}`).join('\n'))
     }
     return parts.join('\n\n')
+  }
+
+  /** 课件关联了「课程与教案」里的某次课：把课程目标和教案要点带给 AI */
+  async courseSessionText(l) {
+    if (!l.courseRef?.courseId) return ''
+    let c, s
+    try { c = await this.courses.get(l.courseRef.courseId); s = this.courses.session(c, l.courseRef.sessionId) } catch { return '' }
+    const objs = s.objectiveIds.map(id => c.objectives.find(o => o.id === id)).filter(Boolean)
+    const t = [`【本课件对应《${c.name}》第 ${s.seq} 次课教案——课件要服务这些目标】`]
+    if (objs.length) t.push('课程目标：' + objs.map(o => `${o.code}（${BLOOM[o.bloom]}层级）${o.content}`).join('；') + '。目标在「应用」及以上层级的，课件里必须有学生动手的练习。')
+    if (s.key) t.push('重点：' + s.key)
+    if (s.difficult) t.push('难点：' + s.difficult)
+    if (s.misconceptions) t.push('学生可能的误区：' + s.misconceptions)
+    if (s.segments.length) t.push('教学环节：' + s.segments.map(g => `${PHASE[g.phase][0].split(' ')[0]} ${g.minutes} 分钟${g.student ? '（学生：' + g.student.slice(0, 40) + '）' : ''}`).join('；'))
+    if (s.ideology) t.push('思政融入：' + s.ideology)
+    return t.join('\n')
+  }
+
+  /** 为课程里的某次课新建（或打开）课件 */
+  async lessonForSession(cid, sid) {
+    const c = await this.courses.get(cid)
+    const s = this.courses.session(c, sid)
+    if (s.lessonId) { try { await this.store.get(s.lessonId); return { id: s.lessonId, created: false } } catch { /* 课件已删除，重新建 */ } }
+    const { l } = await this.createLesson({ title: s.title, course: c.name, minutes: s.minutes, audience: c.audience, attachLibrary: 'auto' })
+    l.courseRef = { courseId: c.id, sessionId: s.id }
+    // 教案里已有的内容带进课件的教学设计
+    const objs = s.objectiveIds.map(id => c.objectives.find(o => o.id === id)).filter(Boolean)
+    Object.assign(l.plan, {
+      objectives: objs.map(o => `${o.code} ${o.content}`).join('\n'), key: s.key, difficult: s.difficult, misconceptions: s.misconceptions, ideology: s.ideology, homework: s.homework,
+      process: s.segments.map(g => `${PHASE[g.phase][0].split(' ')[0]}（${g.minutes} 分钟）教师：${g.teacher}；学生：${g.student}${g.assess ? '；检测：' + g.assess : ''}`).join('\n'),
+    })
+    if (c.syllabus) await this.store.addMaterial(l, `《${c.name}》教学大纲`, c.syllabus)
+    await this.store.save(l)
+    s.lessonId = l.id
+    await this.courses.save(c)
+    return { id: l.id, created: true }
   }
 
   /* ---------------- 配图 ---------------- */

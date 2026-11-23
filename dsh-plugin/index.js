@@ -16,6 +16,7 @@ import Schema from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { Service, typeKey, VIDEO_KINDS } from './lib/service.js'
 import { TYPES, TONES, DENSITY, MUST } from './lib/profile.js'
+import { BLOOM, PHASE } from './lib/course.js'
 import { PLAN_KEYS, PLAN_NAMES } from './lib/web.js'
 import { normalize, applyOps, pace, health, grounding, deckText, LAYOUTS, PHASES } from './lib/core.js'
 import { extractText } from './lib/extract.js'
@@ -467,6 +468,199 @@ export function apply(ctx, config) {
       if (args.action === 'retry') { await svc.retryVideo(l, args.index); return `第 ${args.index} 页的视频已重新提交生成，一般 1–5 分钟完成。` }
       const r = await svc.startVideo(l, { after: args.after, prompt: args.prompt, kind: args.kind, duration: args.duration, title: args.title, firstFramePage: args.first_frame_page })
       return `已提交视频生成（任务 ${r.task}），视频页插在第 ${r.page} 页。一般 1–5 分钟完成，插件会自动下载；可以先做别的，稍后用 action=status 查看。`
+    },
+  }))
+
+  /* ---------------- 课程与教案（OBE） ---------------- */
+  const C = svc.courses
+  const CID = { type: 'string', required: true, description: '课程编号（beike_course action=list 或 create 返回的 id）' }
+  const chk = list => list.length ? list.map(x => `${{ error: '✗', warn: '⚠', info: '·' }[x[0]]} ${x[1]}`).join('\n') : '✓ 没有发现问题'
+  const objLine = o => `${o.code}｜${BLOOM[o.bloom]}(${o.bloom})｜权重 ${o.weight}%｜${o.content}${o.evidence ? `｜依据：「${o.evidence}」${o.evidenceOk ? '（已在大纲中找到）' : '（⚠ 大纲中没有找到这句原文）'}` : ''}`
+  const sesLine = (c, s) => `第${s.seq}次｜${s.id}｜${s.date || '未排日期'}｜${s.title}｜${s.minutes} 分钟｜目标 ${s.objectiveIds.map(id => c.objectives.find(o => o.id === id)?.code).filter(Boolean).join(',') || '—'}｜环节 ${s.segments.length} 个｜${{ draft: '草稿', ready: '已备好', taught: '已上完' }[s.status]}${s.lessonId ? `｜课件 ${s.lessonId}` : ''}`
+
+  ctx.tools.register(defineTool({
+    name: 'beike_course',
+    description: '「课程与教案」（逆向设计 / OBE，用于专业认证、课程评估）：毕业要求指标点 → 课程目标（布鲁姆层级、权重）→ 每次课 BOPPPS 教案 → 题库 → 组卷 → 成绩 → 目标达成度 → 持续改进。action=list 列出课程；create 新建（syllabus 粘贴教学大纲原文）；get 查看课程全貌和对齐检查；update 改信息；schedule 按开课日期和每周上课星期生成全学期课次；clone 复制到新学期（带目标、矩阵、教案、题库和上一轮反思）；report 返回达成度、试题分析和问题清单，用于写“持续改进建议”；save_improvement 保存改进建议；syllabus 分段读取大纲原文；export 导出整门课教案集（Word）到工作区。',
+    parameters: {
+      action: { type: 'string', required: true, enum: ['list', 'get', 'create', 'update', 'schedule', 'clone', 'report', 'save_improvement', 'syllabus', 'export'] },
+      course_id: { type: 'string', description: '课程编号（list / create 以外都需要）' },
+      info: { type: 'json', description: 'create / update：{ name 课程名, code 课程代码, semester 学期, credits 学分, hours 学时, lessonMinutes 每次课分钟数, audience 授课对象, syllabus 教学大纲原文, threshold 达成度阈值(默认0.7) }' },
+      schedule: { type: 'json', description: 'schedule：{ start "2026-09-07", weekdays [1,3] 周一=1…周日=7, count 次数, skip "2026-10-01,2026-10-02" 跳过的日期 }' },
+      semester: { type: 'string', description: 'clone 时的新学期名称' },
+      text: { type: 'string', description: 'save_improvement 时的改进建议全文' },
+      offset: { type: 'integer', description: 'syllabus 时从第几个字开始' },
+      path: { type: 'string', description: 'export 时保存路径（可选）' },
+    },
+    output: out,
+    async execute(args, exec) {
+      await ready
+      if (args.action === 'list') {
+        const list = await C.list()
+        return list.length ? list.map(c => `${c.id}｜${c.name}${c.code ? `（${c.code}）` : ''}｜${c.semester || '—'}｜目标 ${c.objectives}｜课次 ${c.sessions}｜题 ${c.questions}｜试卷 ${c.papers}`).join('\n') : '还没有课程。用 action=create 新建（建议把教学大纲原文放进 info.syllabus）。'
+      }
+      if (args.action === 'create') {
+        const c = await C.create(args.info || {})
+        return `已新建课程 ${c.id}《${c.name}》。下一步：${c.syllabus ? '读大纲（action=syllabus），用 beike_course_objectives 提取课程目标（每条附大纲原文依据）' : '请老师提供教学大纲原文（action=update 的 info.syllabus），再提取课程目标'}；然后 action=schedule 生成课次。`
+      }
+      const c = await C.get(args.course_id)
+      switch (args.action) {
+        case 'update': C.setInfo(c, args.info || {}); await C.save(c); return `已更新《${c.name}》。`
+        case 'syllabus': {
+          if (!c.syllabus) return '这门课还没有教学大纲原文。'
+          const off = Math.max(0, args.offset || 0), chunk = c.syllabus.slice(off, off + 15000), end = off + chunk.length
+          return `【大纲 第 ${off + 1}–${end} 字 / 共 ${c.syllabus.length} 字】\n${chunk}` + (end < c.syllabus.length ? `\n（未读完，下一次用 offset=${end}）` : '')
+        }
+        case 'schedule': { const n = C.schedule(c, args.schedule || {}); await C.save(c); return `已生成 ${n} 次课的教学进度。\n` + c.sessions.slice().sort((a, b) => a.seq - b.seq).map(s => sesLine(c, s)).join('\n') }
+        case 'clone': { const n = await C.cloneCourse(c, args.semester); return `已复制到新学期：${n.id}《${n.name}》${n.semester}。上一轮的教学反思已放进每个课次。` }
+        case 'save_improvement': c.improvement = String(args.text || '').slice(0, 20000); await C.save(c); return '已保存持续改进建议，老师可以在工作台「课程与教案 → 达成度与改进」查看。'
+        case 'export': {
+          const buf = await C.sessionDocx(c)
+          let file = args.path ? (isAbsolute(args.path) ? args.path : resolve(await cwdOf(exec), args.path)) : join(await cwdOf(exec), `${c.name}-教案集.docx`.replace(/[\\/:*?"<>|]/g, '_'))
+          if (!/\.docx$/i.test(file)) file += '.docx'
+          await mkdir(dirname(file), { recursive: true }); await writeFile(file, buf)
+          return `已导出教案集：${file}（${c.sessions.length} 次课）`
+        }
+        case 'report': {
+          const att = C.attainment(c)
+          let t = `《${c.name}》${c.semester || ''} 达成度阈值 ${c.threshold}\n\n【课程目标达成度】\n` + att.map(a => `${a.code}（权重 ${a.weight}%）：${a.attain == null ? '暂无成绩' : `${(a.attain * 100).toFixed(1)}%${a.attain < c.threshold ? ' ⚠ 未达阈值' : ''}，个人未达阈值 ${a.below}/${a.students} 人`}｜${a.content}`).join('\n')
+          for (const p of c.papers) {
+            const a = C.analyze(c, p)
+            if (!a.n) continue
+            t += `\n\n【试卷：${p.title}】${a.n} 人，平均 ${a.mean.toFixed(1)}/${a.full}，标准差 ${a.sd.toFixed(1)}，信度 α=${a.alpha == null ? '—' : a.alpha.toFixed(2)}；分数段 ${Object.entries(a.bands).map(([k, v]) => `${k}:${v}`).join(' ')}\n` +
+              a.items.map(i => `第${i.no}题 ${i.qtype}（${c.objectives.find(o => o.id === i.objectiveId)?.code || '未关联目标'}，${BLOOM[i.bloom]}）P=${i.P.toFixed(2)} D=${i.D == null ? '—' : i.D.toFixed(2)}${i.flags.length ? ' ⚠' + i.flags.join('、') : ''}`).join('\n')
+          }
+          const refl = c.sessions.filter(s => s.reflection.trim()).map(s => `第${s.seq}次「${s.title}」：${s.reflection.slice(0, 300)}`)
+          if (refl.length) t += `\n\n【教学反思】\n${refl.join('\n')}`
+          t += `\n\n【对齐检查】\n${chk(C.checkCourse(c))}`
+          return t + '\n\n写持续改进建议时：只依据上面的数据，逐个说明未达成或偏低的目标、可能原因（教学环节、题目质量、学生基础）和下一轮可执行的改进措施；问题题目（偏难、负区分）给出修改方向。写好后用 action=save_improvement 保存。'
+        }
+        default: {
+          const bp = C.blueprint(c)
+          return `${c.id}《${c.name}》${c.code ? `（${c.code}）` : ''}｜${c.semester || '—'}｜${c.credits} 学分 ${c.hours} 学时｜每次课 ${c.lessonMinutes} 分钟｜授课对象：${c.audience || '—'}｜大纲 ${c.syllabus ? c.syllabus.length + ' 字' : '未提供'}` +
+            `\n\n【毕业要求指标点】\n${c.gradReqs.map(g => `${g.code}｜${g.id}｜${g.content}`).join('\n') || '—'}` +
+            `\n\n【课程目标】\n${c.objectives.map(o => objLine(o) + `｜支撑 ${Object.entries(o.reqs || {}).map(([gid, lv]) => `${c.gradReqs.find(g => g.id === gid)?.code}:${lv}`).join(' ') || '—'}`).join('\n') || '—'}` +
+            `\n\n【课次】\n${c.sessions.slice().sort((a, b) => a.seq - b.seq).map(s => sesLine(c, s)).join('\n') || '—（用 action=schedule 生成）'}` +
+            `\n\n【题库双向细目表（题数，列为布鲁姆 1–6）】\n${bp.map(r => `${r.code}（目标层级 ${r.bloom}）：${r.cells.join(' ')}`).join('\n') || '—'}，共 ${c.questions.length} 题` +
+            `\n\n【试卷】${c.papers.map(p => `${p.id}「${p.title}」${p.items.length} 题，成绩 ${Object.keys(p.scores).length} 人`).join('；') || '—'}` +
+            `\n\n【对齐检查】\n${chk(C.checkCourse(c))}`
+        }
+      }
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'beike_course_objectives',
+    description: '保存课程目标、毕业要求指标点和支撑矩阵（整体替换传入的部分）。从大纲提取目标时：2–6 条，用可观测的行为动词（能够……），标布鲁姆层级 1 记忆 2 理解 3 应用 4 分析 5 评价 6 创造，权重合计 100；每条的 evidence 必须是从大纲中**逐字复制**的一句原文（10–60 字），插件会逐字核对并标出找不到的。',
+    parameters: {
+      course_id: CID,
+      objectives: { type: 'json', description: '[{ code "CO1", content "能够……", bloom 1-6, weight 30, evidence "大纲原文", reqs { 指标点id: "H"|"M"|"L" } }]；修改已有目标时带上 id' },
+      grad_reqs: { type: 'json', description: '[{ code "1.2", content "指标点内容" }]（修改已有时带上 id）' },
+      matrix: { type: 'json', description: '{ 目标id: { 指标点id: "H"|"M"|"L" } }' },
+    },
+    output: out,
+    async execute(args) {
+      const c = await C.get(args.course_id)
+      if (Array.isArray(args.grad_reqs)) C.setGradReqs(c, args.grad_reqs)
+      if (Array.isArray(args.objectives)) C.setObjectives(c, args.objectives)
+      if (args.matrix && typeof args.matrix === 'object') C.setMatrix(c, args.matrix)
+      await C.save(c)
+      const bad = c.objectives.filter(o => o.evidence && !o.evidenceOk)
+      return `已保存。\n【课程目标】\n${c.objectives.map(objLine).join('\n') || '—'}\n【指标点】${c.gradReqs.map(g => `${g.code}(${g.id})`).join(' ') || '—'}` +
+        (bad.length ? `\n\n⚠ 有 ${bad.length} 条目标的依据在大纲中没有逐字找到，请重新从大纲复制原文，或请老师核对。` : '') + `\n\n【对齐检查】\n${chk(C.checkCourse(c))}`
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'beike_session',
+    description: '课程里每次课的教案（BOPPPS）。action=get 查看某次课的教案和检查结果；save 保存教案（只传要改的字段）；add 新增一次课；make_lesson 为这次课新建课件（带上目标、教案和大纲，之后用 beike_save_slides 做课件）。写教案草稿时：先 beike_course action=get 看目标，选本次课覆盖的目标，环节时长合计必须等于课时，学生主动学习 ≥30%，单段讲授不超过 20 分钟，每个目标都要有课堂检测，evidence 从大纲逐字复制 1–3 句。“AI 督导评课”时：读教案和检查结果，指出问题并给出具体修改，经老师同意后再 save。',
+    parameters: {
+      action: { type: 'string', required: true, enum: ['get', 'save', 'add', 'make_lesson'] },
+      course_id: CID,
+      session: { type: 'string', description: '课次编号或第几次课（get / save / make_lesson 需要）' },
+      plan: { type: 'json', description: 'save / add：{ title, date "YYYY-MM-DD", minutes, status draft|ready|taught, objectives ["CO1"], key 重点, difficult 难点, misconceptions 误区, ideology 思政, resources 资源, homework 作业, reflection 反思, segments [{ phase B|O|P1|P2|P3|S, minutes, teacher 教师活动, student 学生活动, objective_code "CO1", assess 检测方式 }], evidence ["大纲原文"] }' },
+    },
+    output: out,
+    async execute(args) {
+      const c = await C.get(args.course_id)
+      if (args.action === 'add') { const s = C.addSession(c, args.plan || {}); await C.save(c); return `已新增第 ${s.seq} 次课（${s.id}）。` }
+      const s = C.session(c, args.session)
+      if (args.action === 'make_lesson') {
+        const r = await svc.lessonForSession(c.id, s.id)
+        return `${r.created ? '已为这次课新建课件' : '这次课已有课件'}：课次 ${r.id}。用 beike_get_lesson 查看备课须知（含本次课的目标和教案），再按备课流程做课件。`
+      }
+      if (args.action === 'save') { C.setSession(c, s, args.plan || {}); await C.save(c) }
+      const o = id => c.objectives.find(x => x.id === id)
+      return `${args.action === 'save' ? '已保存。' : ''}《${c.name}》${sesLine(c, s)}` +
+        `\n目标：${s.objectiveIds.map(id => `${o(id)?.code} ${o(id)?.content}（${BLOOM[o(id)?.bloom]}）`).join('；') || '—'}` +
+        ['key:重点', 'difficult:难点', 'misconceptions:误区', 'ideology:思政', 'resources:资源', 'homework:作业', 'reflection:反思'].map(x => { const [k, n] = x.split(':'); return s[k] ? `\n${n}：${s[k]}` : '' }).join('') +
+        `\n环节：\n${s.segments.map(g => `- ${PHASE[g.phase][0]} ${g.minutes} 分钟｜教师：${g.teacher}｜学生：${g.student || '—'}｜${o(g.objectiveId)?.code || '—'}｜检测：${g.assess || '—'}`).join('\n') || '—'}` +
+        (s.evidence?.length ? `\n大纲依据：${s.evidence.map(e => `「${e.quote}」${e.ok ? '' : '（⚠ 大纲中没有找到）'}`).join(' ')}` : '') +
+        `\n\n【检查】\n${chk(C.checkSession(c, s))}`
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'beike_question',
+    description: '课程题库。action=list 列出题目（可按目标筛选）；add 批量新增题目（按“目标 × 布鲁姆层级”出题，题目层级不低于目标层级；选择题干扰项来自学生常见误区；evidence 从大纲或目标表述逐字复制一句作为命题依据）；delete 删除题目。',
+    parameters: {
+      action: { type: 'string', required: true, enum: ['list', 'add', 'delete'] },
+      course_id: CID,
+      objective: { type: 'string', description: 'list 时按目标代号筛选（如 CO1）' },
+      questions: { type: 'json', description: 'add：[{ objective_code "CO1", bloom 1-6, qtype 单选|多选|判断|填空|简答|计算|论述|案例分析|设计, stem 题干, options ["A. …"], answer, analysis 解析, difficulty 1-5, score 分值, evidence }]' },
+      ids: { type: 'array', items: { type: 'string' }, description: 'delete 时的题目编号' },
+    },
+    output: out,
+    async execute(args) {
+      const c = await C.get(args.course_id)
+      const code = id => c.objectives.find(o => o.id === id)?.code || '未关联'
+      if (args.action === 'add') {
+        const added = [], errs = []
+        for (const q of Array.isArray(args.questions) ? args.questions : []) { try { added.push(C.saveQuestion(c, { ...q, source: 'AI' })) } catch (e) { errs.push(e.message) } }
+        await C.save(c)
+        const bad = added.filter(q => q.evidence && !q.evidenceOk).length
+        return `已新增 ${added.length} 题。` + (errs.length ? ` 跳过 ${errs.length} 题（${errs[0]}）。` : '') + (bad ? ` ⚠ 其中 ${bad} 题的命题依据没有在大纲或目标中逐字找到。` : '') +
+          `\n双向细目表（列为布鲁姆 1–6）：\n${C.blueprint(c).map(r => `${r.code}（目标层级 ${r.bloom}）：${r.cells.join(' ')}`).join('\n')}`
+      }
+      if (args.action === 'delete') { const ids = new Set(args.ids || []); const n = c.questions.length; c.questions = c.questions.filter(q => !ids.has(q.id)); await C.save(c); return `已删除 ${n - c.questions.length} 题。` }
+      const list = c.questions.filter(q => !args.objective || code(q.objectiveId) === args.objective)
+      return list.length ? list.slice(0, 150).map(q => `${q.id}｜${code(q.objectiveId)}｜${BLOOM[q.bloom]}｜${q.qtype}｜${q.score} 分｜${q.stem.slice(0, 80)}`).join('\n') : '题库里还没有题目。'
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'beike_paper',
+    description: '组卷与成绩分析。action=create 新建试卷（不给 question_ids 时按课程目标权重从题库自动组卷）；get 查看试卷和试题分析（难度、区分度、信度、分数段；需老师在工作台导入逐题成绩）；export 导出 Word 试卷或答案到工作区。',
+    parameters: {
+      action: { type: 'string', required: true, enum: ['create', 'get', 'export'] },
+      course_id: CID,
+      paper_id: { type: 'string', description: 'get / export 时的试卷编号' },
+      title: { type: 'string', description: 'create 时的试卷名称' },
+      total: { type: 'integer', description: 'create 自动组卷时的总分，默认 100' },
+      question_ids: { type: 'array', items: { type: 'string' }, description: 'create 时手工指定题目（按顺序）' },
+      answers: { type: 'boolean', description: 'export 时导出参考答案（默认导出试卷）' },
+      path: { type: 'string', description: 'export 保存路径（可选）' },
+    },
+    output: out,
+    async execute(args, exec) {
+      const c = await C.get(args.course_id)
+      if (args.action === 'create') {
+        const p = C.createPaper(c, { title: args.title, total: args.total, questionIds: args.question_ids })
+        await C.save(c)
+        const items = C.paperItems(c, p), full = items.reduce((a, i) => a + i.full, 0)
+        const by = {}; for (const i of items) { const k = c.objectives.find(o => o.id === i.q.objectiveId)?.code || '未关联'; by[k] = (by[k] || 0) + i.full }
+        return `已组卷 ${p.id}「${p.title}」：${items.length} 题，共 ${full} 分。各目标分值：${Object.entries(by).map(([k, v]) => `${k} ${v} 分（${(v / full * 100).toFixed(0)}%）`).join('，')}。` + (Math.abs(full - (args.total || 100)) > 5 && !args.question_ids ? '\n题库题量不足以凑满目标分值，可以先补题再重新组卷。' : '')
+      }
+      const p = C.paper(c, args.paper_id)
+      if (args.action === 'export') {
+        const key = !!args.answers, buf = await C.paperDocx(c, p, key)
+        let file = args.path ? (isAbsolute(args.path) ? args.path : resolve(await cwdOf(exec), args.path)) : join(await cwdOf(exec), `${c.name}-${p.title}${key ? '-答案' : ''}.docx`.replace(/[\\/:*?"<>|]/g, '_'))
+        if (!/\.docx$/i.test(file)) file += '.docx'
+        await mkdir(dirname(file), { recursive: true }); await writeFile(file, buf)
+        return `已导出：${file}`
+      }
+      const a = C.analyze(c, p), items = C.paperItems(c, p)
+      return `「${p.title}」${items.length} 题，共 ${items.reduce((s, i) => s + i.full, 0)} 分\n` + items.map(i => `${i.no}. ${i.q.qtype} ${i.full} 分｜${c.objectives.find(o => o.id === i.q.objectiveId)?.code || '—'}｜${i.q.stem.slice(0, 60)}`).join('\n') +
+        (a.n ? `\n\n成绩 ${a.n} 人，平均 ${a.mean.toFixed(1)}，信度 α=${a.alpha == null ? '—' : a.alpha.toFixed(2)}\n` + a.items.map(i => `第${i.no}题 P=${i.P.toFixed(2)} D=${i.D == null ? '—' : i.D.toFixed(2)}${i.flags.length ? ' ⚠' + i.flags.join('、') : ''}`).join('\n') : '\n\n还没有导入成绩（老师在工作台下载成绩模板，用 Excel 填好后导入）。')
     },
   }))
 

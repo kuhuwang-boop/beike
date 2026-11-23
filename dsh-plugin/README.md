@@ -6,7 +6,7 @@
 
 ## 有什么
 
-**给 AI 的 15 个工具**
+**给 AI 的 20 个工具**
 
 | 工具 | 作用 |
 |---|---|
@@ -22,6 +22,11 @@
 | `beike_library` | 我的资料库：列出、搜索、推荐、读取、存入、加入课次 |
 | `beike_image` | 配图：搜索免费图库、AI 生成（MiniMax H3-Image）、去掉 |
 | `beike_video` | AI 教学短视频（MiniMax 海螺 H3），插在指定页后面 |
+| `beike_course` | 课程与教案：新建课程（含教学大纲）、查看全貌与对齐检查、生成教学进度、复制到新学期、达成度报告、保存改进建议、导出教案集 |
+| `beike_course_objectives` | 课程目标（布鲁姆层级、权重、大纲依据逐字核对）、毕业要求指标点、支撑矩阵 |
+| `beike_session` | 每次课的 BOPPPS 教案：查看、保存（返回检查结果）、新增、为这次课做课件 |
+| `beike_question` | 课程题库：按“目标 × 层级”出题、列出、删除 |
+| `beike_paper` | 组卷（按目标权重自动组卷或手工挑题）、试题分析、导出 Word 试卷和答案 |
 | `beike_check` | 课件体检 + 出处核对（不调用 AI） |
 | `beike_export` | 导出 .pptx 课件或 Word 教案到工作区 |
 | `beike_open` | 给出备课工作台网页地址 |
@@ -42,6 +47,7 @@
 - 教学设计：教学方法、授课对象、学情、目标、重难点、误区、BOPPPS 过程、思政、作业、板书、课后反思；下载 Word 教案、打印 / 存 PDF
 - **上课**：浏览器全屏放映，翻页笔可用；A 显示答案、B 黑屏、P 演讲者视图（讲稿、下一页、计时、快慢提示）；投影窗口同步翻页；视频可直接播放
 - 下载 PPT（16:9，文字可编辑，结构图是原生形状，讲稿和答案在备注里，带学校模板、校徽和教学视频）
+- **课程与教案（逆向设计 / OBE）**：教学大纲 → 课程目标（布鲁姆层级、权重，大纲依据逐字核对）→ 毕业要求支撑矩阵（H/M/L）→ 一键生成全学期教学进度 → 每次课的 BOPPPS 教案（环节时长、学生活动、目标与检测）→ 题库与双向细目表 → 按目标权重自动组卷、导出 Word 试卷和答案 → 导入逐题成绩（Excel CSV）→ 难度、区分度、信度、分数段、课程目标达成度 → 持续改进建议 → 复制到新学期。每一环都有固定规则检查；教案可以一键生成课件，课件自动带上本次课的目标和教案
 - AI 每改一次，网页自动刷新；手机上也能看
 
 ## 安装
@@ -52,7 +58,7 @@
 
 ```bash
 # 1) 用安装包（.tgz）
-dsh plugin --profile web add ./dsh-beike-1.3.0.tgz
+dsh plugin --profile web add ./dsh-beike-1.4.0.tgz
 
 # 2) 用解压后的文件夹（方便自己改代码；先在文件夹里执行一次 npm install）
 dsh plugin --profile web add ./dsh-beike
@@ -61,7 +67,7 @@ dsh plugin --profile web add ./dsh-beike
 dsh plugin --profile web add github:你的账号/dsh-beike
 ```
 
-> 没有全局安装 `dsh` 时，在命令前加 `npx @deepseek-ai/dsh`，例如 `npx @deepseek-ai/dsh plugin --profile web add ./dsh-beike-1.3.0.tgz`。
+> 没有全局安装 `dsh` 时，在命令前加 `npx @deepseek-ai/dsh`，例如 `npx @deepseek-ai/dsh plugin --profile web add ./dsh-beike-1.4.0.tgz`。
 
 确认已装上：
 
@@ -116,6 +122,7 @@ AI 做完会给你工作台链接。在网页里看效果、自己改几处、�
 
 ## 数据与隐私
 
+- 课程与教案在 `<数据目录>/courses/<课程编号>.json`（目标、矩阵、教案、题库、试卷与成绩）。
 - 个人设置在 `<数据目录>/profile.json`（备课风格、技能、常用指令、学校信息与模板），资料库在 `<数据目录>/library/`，API Key 在 `<数据目录>/secrets.json`（只在本机，不回传网页）。
 - 每节课一个文件夹：`<数据目录>/lessons/<课次编号>/`，里面是 `lesson.json`（课件、教学设计）、`materials/`（资料提取出的文字）、`images/`（配图）。可以直接备份或拷贝到另一台电脑。
 - 插件只在你使用配图 / 视频功能时联网：搜索图库（Openverse / Pexels / Pixabay）和调用 MiniMax。其余内容只经过你在 DeepSeek Harness 里配置的模型服务。

@@ -21,6 +21,7 @@
     <input class="bk-search" id="q" placeholder="搜索课次或课程" oninput="BK.renderSide()">
     <div class="bk-list" id="list"></div>
     <nav class="bk-nav">
+      <button data-page="courses" onclick="BK.page('courses')"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-target-arrow"></use></svg>课程与教案</button>
       <button data-page="library" onclick="BK.page('library')"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-books"></use></svg>我的资料库</button>
       <button data-page="style" onclick="BK.page('style')"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-adjustments-horizontal"></use></svg>我的备课风格</button>
       <button data-page="brand" onclick="BK.page('brand')"><svg class="ico"><use href="__BASE__/assets/vendor/icons.svg#i-school"></use></svg>学校模板与校徽</button>
@@ -35,6 +36,7 @@
 <script src="__BASE__/assets/vendor/jszip.min.js"></script>
 <script src="__BASE__/assets/template.js"></script>
 <script src="__BASE__/assets/more.js"></script>
+<script src="__BASE__/assets/course.js"></script>
 <script src="__BASE__/assets/app.js"></script>
 </body>
 </html>

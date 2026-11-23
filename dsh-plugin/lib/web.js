@@ -68,7 +68,7 @@ export async function lessonView(svc, l, base) {
   }))
   const ms = await profile.methodsFor(l.methods)
   return {
-    id: l.id, title: l.title, course: l.course, minutes: l.minutes, lessonType: l.lessonType || '', audience: l.audience || '',
+    id: l.id, title: l.title, course: l.course, minutes: l.minutes, lessonType: l.lessonType || '', audience: l.audience || '', courseRef: l.courseRef || null,
     theme: l.theme || 'blue', methods: ms.map(m => ({ key: m.key, name: m.name, summary: m.summary, mine: !!m.mine })),
     plan: l.plan || {}, materials: l.materials, updatedAt: l.updatedAt, versions: (l.history || []).length,
     slides, pace: pace(l.slides), health: health(l.slides, l.minutes), ground: grounding(l.slides, src),
@@ -83,7 +83,7 @@ export async function lessonView(svc, l, base) {
  * @param {()=>number} [o.localPort] 本机端口模式：只接受 Host 为本机地址的请求（防 DNS 重绑定）
  */
 export function createHandler({ svc, base, reject, localPort, logger }) {
-  const { store, profile, library } = svc
+  const { store, profile, library, courses } = svc
   const hostOk = (req) => {
     if (!localPort) return true
     const h = String(req.headers.host || '').toLowerCase()
@@ -91,6 +91,7 @@ export function createHandler({ svc, base, reject, localPort, logger }) {
     return h === `127.0.0.1:${port}` || h === `localhost:${port}` || h === `[::1]:${port}`
   }
   const assetUrl = f => `${base}/files/_/${f}`
+  courseRoute.svc = svc
 
   return async function handle(req, res) {
     try {
@@ -197,8 +198,19 @@ export function createHandler({ svc, base, reject, localPort, logger }) {
       if (POST) return ok(res, { item: await library.update(m[1], await readJson(req, 8 * 1024 * 1024)) })
       return send(res, 200, await library.get(m[1]))
     }
+    /* ---------- 从文件提取文字（大纲等） ---------- */
+    if (POST && p === '/extract') {
+      const name = decodeURIComponent(String(req.headers['x-file-name'] || ''))
+      if (!name) return fail(res, 400, '缺少文件名')
+      return send(res, 200, { text: await extractText(name, await readBody(req)) })
+    }
     /* ---------- 图片搜索 ---------- */
     if (p === '/images') return send(res, 200, { items: await svc.searchImages(url.searchParams.get('q'), Number(url.searchParams.get('page')) || 1) })
+
+    /* ---------- 课程与教案（OBE） ---------- */
+    if (p === '/courses') return send(res, 200, { items: await courses.list() })
+    if (POST && p === '/course') return ok(res, { id: (await courses.create(await readJson(req))).id })
+    if ((m = p.match(/^\/course\/(c[a-z0-9]{6,24})(\/.*)?$/))) return courseRoute(req, res, m[1], m[2] || '', url)
 
     /* ---------- 课次 ---------- */
     if (POST && p === '/lesson') {
@@ -285,6 +297,57 @@ export function createHandler({ svc, base, reject, localPort, logger }) {
     }
     return fail(res, 404, 'not found')
   }
+}
+
+/** 课程与教案的接口 */
+async function courseRoute(req, res, cid, sub, url) {
+  const POST = req.method === 'POST'
+  const svc = courseRoute.svc, C = svc.courses
+  const c = await C.get(cid)
+  let m
+  const save = async (extra = {}) => { await C.save(c); return ok(res, extra) }
+  const fname = (t, ext) => `${c.name}-${t}`.replace(/[\\/:*?"<>|]/g, '_') + ext
+  const word = (buf, t) => send(res, 200, buf, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', { 'Content-Disposition': `attachment; filename="doc.docx"; filename*=UTF-8''${encodeURIComponent(fname(t, '.docx'))}` })
+  if (!sub && !POST) {
+    const lessons = {}
+    for (const s of c.sessions) if (s.lessonId) { try { const l = await svc.store.get(s.lessonId); lessons[s.lessonId] = { title: l.title, pages: l.slides.length } } catch { /* 课件已删除 */ } }
+    return send(res, 200, {
+      course: c, checks: C.checkCourse(c), blueprint: C.blueprint(c), attainment: C.attainment(c), qStats: C.qStats(c), lessons,
+      sessionChecks: Object.fromEntries(c.sessions.map(s => { const k = C.checkSession(c, s); return [s.id, { error: k.filter(x => x[0] === 'error').length, warn: k.filter(x => x[0] === 'warn').length }] })),
+      papers: c.papers.map(pp => ({ id: pp.id, title: pp.title, createdAt: pp.createdAt, items: pp.items.length, full: pp.items.reduce((a, i) => a + i.score, 0), students: Object.keys(pp.scores || {}).length })),
+    })
+  }
+  if (!sub && POST) { C.setInfo(c, await readJson(req, 8 * 1024 * 1024)); return save() }
+  if (POST && sub === '/delete') { await C.remove(cid); return ok(res) }
+  if (POST && sub === '/objectives') { C.setObjectives(c, (await readJson(req)).objectives); return save() }
+  if (POST && sub === '/gradreqs') { C.setGradReqs(c, (await readJson(req)).gradReqs); return save() }
+  if (POST && sub === '/matrix') { C.setMatrix(c, (await readJson(req)).matrix); return save() }
+  if (POST && sub === '/schedule') { const n = C.schedule(c, await readJson(req)); return save({ n }) }
+  if (POST && sub === '/clone') { const n = await C.cloneCourse(c, (await readJson(req)).semester); return ok(res, { id: n.id }) }
+  if (POST && sub === '/improvement') { c.improvement = String((await readJson(req)).text || '').slice(0, 20000); return save() }
+  if (sub === '/docx') return word(await C.sessionDocx(c, url.searchParams.get('sid') ? [url.searchParams.get('sid')] : null), url.searchParams.get('sid') ? '教案' : '教案集')
+  if (POST && sub === '/session') { const s = C.addSession(c, await readJson(req)); return save({ id: s.id }) }
+  if ((m = sub.match(/^\/session\/(s[a-z0-9]{6,24})(\/.*)?$/))) {
+    const s = C.session(c, m[1]), t = m[2] || ''
+    if (!t && !POST) return send(res, 200, { session: s, checks: C.checkSession(c, s) })
+    if (!t && POST) { C.setSession(c, s, await readJson(req)); await C.save(c); return ok(res, { checks: C.checkSession(c, s) }) }
+    if (POST && t === '/delete') { c.sessions = c.sessions.filter(x => x !== s); return save() }
+    if (POST && t === '/lesson') return ok(res, await svc.lessonForSession(cid, s.id))
+  }
+  if (POST && sub === '/question') { const q = C.saveQuestion(c, await readJson(req)); return save({ id: q.id }) }
+  if (POST && (m = sub.match(/^\/question\/(q[a-z0-9]{6,24})\/delete$/))) { c.questions = c.questions.filter(q => q.id !== m[1]); return save() }
+  if (POST && sub === '/paper') { const pp = C.createPaper(c, await readJson(req)); return save({ id: pp.id }) }
+  if ((m = sub.match(/^\/paper\/(p[a-z0-9]{6,24})(\/.*)?$/))) {
+    const pp = C.paper(c, m[1]), t = m[2] || ''
+    if (!t && !POST) return send(res, 200, { paper: { id: pp.id, title: pp.title, createdAt: pp.createdAt }, items: C.paperItems(c, pp), analysis: C.analyze(c, pp) })
+    if (!t && POST) { C.setPaper(c, pp, await readJson(req)); return save() }
+    if (POST && t === '/delete') { c.papers = c.papers.filter(x => x !== pp); return save() }
+    if (t === '/docx') return word(await C.paperDocx(c, pp, url.searchParams.get('key') === '1'), pp.title + (url.searchParams.get('key') === '1' ? '-答案' : ''))
+    if (t === '/template') return send(res, 200, C.scoreTemplate(c, pp), 'text/csv; charset=utf-8', { 'Content-Disposition': `attachment; filename="scores.csv"; filename*=UTF-8''${encodeURIComponent(fname(pp.title + '-成绩模板', '.csv'))}` })
+    if (POST && t === '/scores') { const n = C.importScores(c, pp, await readBody(req, 5 * 1024 * 1024)); return save({ n }) }
+    if (POST && t === '/scores/clear') { pp.scores = {}; return save() }
+  }
+  return fail(res, 404, 'not found')
 }
 
 export const PLAN_KEYS = ['analysis', 'objectives', 'key', 'difficult', 'misconceptions', 'process', 'ideology', 'homework', 'board', 'reflection']
